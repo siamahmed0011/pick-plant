@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+.env*
+!.env.example
+*.log
+.tools
+.runtime
+.runtime-node.zip
+/src/generated/prisma

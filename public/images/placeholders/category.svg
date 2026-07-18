@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" role="img" aria-labelledby="title desc">
+  <title id="title">Pick Plant category placeholder</title>
+  <desc id="desc">A layered botanical composition in deep and fresh greens</desc>
+  <rect width="600" height="450" rx="36" fill="#EEF5EE"/>
+  <circle cx="455" cy="92" r="112" fill="#FAFAF7"/>
+  <path d="M302 392V126" fill="none" stroke="#1E5A3A" stroke-width="16" stroke-linecap="round"/>
+  <path d="M303 300c-96-10-137-66-136-126 73 0 126 40 136 126Z" fill="#2E7D57"/>
+  <path d="M303 252c88-10 127-62 126-119-68 1-117 39-126 119Z" fill="#1E5A3A"/>
+  <path d="M303 365c-60-7-88-40-88-80 46 0 81 27 88 80Z" fill="#87B494"/>
+  <path d="M213 382h180l-17 68H230Z" fill="#D78B45"/>
+</svg>

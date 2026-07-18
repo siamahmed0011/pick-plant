@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" role="img" aria-labelledby="title desc">
+  <title id="title">Empty plant collection</title>
+  <desc id="desc">A calm illustration of a small empty planter with a sprouting leaf</desc>
+  <rect width="320" height="220" rx="28" fill="#EEF5EE"/>
+  <circle cx="160" cy="105" r="76" fill="#FAFAF7"/>
+  <path d="M160 145V86" stroke="#1E5A3A" stroke-width="8" stroke-linecap="round"/>
+  <path d="M160 116c-33-5-46-27-44-50 26 1 43 18 44 50Z" fill="#2E7D57"/>
+  <path d="M160 101c29-4 43-23 42-44-24 1-40 16-42 44Z" fill="#1E5A3A"/>
+  <path d="M112 143h96l-12 46h-72Z" fill="#D78B45"/>
+</svg>

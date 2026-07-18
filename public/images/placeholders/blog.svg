@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-labelledby="title desc">
+  <title id="title">Pick Plant care guide placeholder</title>
+  <desc id="desc">An editorial botanical landscape for plant care articles</desc>
+  <rect width="800" height="450" rx="36" fill="#FAFAF7"/>
+  <circle cx="652" cy="104" r="64" fill="#D78B45" opacity=".88"/>
+  <path d="M0 362 190 195l127 106 142-178 341 246v81H0Z" fill="#DCE7DC"/>
+  <path d="M0 398 218 252l143 91 148-137 291 190v54H0Z" fill="#2E7D57"/>
+  <path d="M0 421 238 330l150 67 158-88 254 111v30H0Z" fill="#1E5A3A"/>
+</svg>

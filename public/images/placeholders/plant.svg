@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-labelledby="title desc">
+  <title id="title">Pick Plant botanical product placeholder</title>
+  <desc id="desc">A potted leafy plant in the Pick Plant brand palette</desc>
+  <rect width="600" height="600" rx="48" fill="#EEF5EE"/>
+  <circle cx="300" cy="268" r="190" fill="#FAFAF7"/>
+  <path d="M300 458V214" fill="none" stroke="#1E5A3A" stroke-width="18" stroke-linecap="round"/>
+  <path d="M300 344c-94-15-130-77-124-145 72 4 121 52 124 145Z" fill="#2E7D57"/>
+  <path d="M300 287c89-12 127-70 122-133-69 3-117 47-122 133Z" fill="#1E5A3A"/>
+  <path d="M300 390c-62-9-91-48-89-91 49 2 84 32 89 91Z" fill="#76A987"/>
+  <path d="M211 446h178l-22 98H233Z" fill="#D78B45"/>
+  <path d="M225 446h150" stroke="#B56D31" stroke-width="12" stroke-linecap="round"/>
+</svg>
