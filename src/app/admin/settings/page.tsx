@@ -1,6 +1,10 @@
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-export default function Page() {
+import { AdminPlaceholderPage } from "@/components/admin/admin-placeholder-page";
+
+export default function AdminSettingsPage() {
   return (
-    <AdminPageHeader title="Settings" description="Store configuration interface এখানে থাকবে।" />
+    <AdminPlaceholderPage
+      title="Settings"
+      description="Store configuration will be implemented in a later phase."
+    />
   );
 }

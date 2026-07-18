@@ -13,13 +13,15 @@ import { ProductGrid } from "@/components/product/product-grid";
 import { Container } from "@/components/shared/container";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { Badge } from "@/components/ui/badge";
-import { products } from "@/data/products";
+import { products as staticProducts } from "@/data/products";
+import { getStorefrontProducts } from "@/lib/storefront/products";
 type Props = { params: Promise<{ slug: string }> };
 export function generateStaticParams() {
-  return products.map((product) => ({ slug: product.slug }));
+  return staticProducts.map((product) => ({ slug: product.slug }));
 }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const products = await getStorefrontProducts();
   const product = products.find((item) => item.slug === slug);
   return product
     ? { title: `${product.name} | Pick Plant`, description: product.shortDescription }
@@ -27,6 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 export default async function PlantDetailsPage({ params }: Props) {
   const { slug } = await params;
+  const products = await getStorefrontProducts();
   const product = products.find((item) => item.slug === slug);
   if (!product) notFound();
   const discount = product.salePrice

@@ -1,6 +1,10 @@
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-export default function Page() {
+import { AdminPlaceholderPage } from "@/components/admin/admin-placeholder-page";
+
+export default function AdminCustomersPage() {
   return (
-    <AdminPageHeader title="Customers" description="Customer information interface এখানে থাকবে।" />
+    <AdminPlaceholderPage
+      title="Customers"
+      description="Customer management will be implemented in a later phase."
+    />
   );
 }

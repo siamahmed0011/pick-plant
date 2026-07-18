@@ -5,13 +5,16 @@ import { Container } from "@/components/shared/container";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { EmptyState } from "@/components/shared/empty-state";
 import { categories } from "@/data/categories";
-import { products } from "@/data/products";
+import { getStorefrontProducts } from "@/lib/storefront/products";
 export function generateStaticParams() {
   return categories.map((category) => ({ slug: category.slug }));
 }
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const category = categories.find((item) => item.slug === slug);
+  const products = await getStorefrontProducts();
+  const category =
+    products.find((product) => product.category.slug === slug)?.category ??
+    categories.find((item) => item.slug === slug);
   if (!category) notFound();
   const categoryProducts = products.filter((product) => product.category.slug === category.slug);
   return (

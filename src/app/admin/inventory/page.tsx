@@ -1,6 +1,10 @@
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-export default function Page() {
+import { AdminPlaceholderPage } from "@/components/admin/admin-placeholder-page";
+
+export default function AdminInventoryPage() {
   return (
-    <AdminPageHeader title="Inventory" description="Stock ও inventory overview এখানে থাকবে।" />
+    <AdminPlaceholderPage
+      title="Inventory"
+      description="Inventory management will be implemented in a later phase."
+    />
   );
 }

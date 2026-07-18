@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import Image from "next/image";
 import { ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
 export function ProductGallery({ images, name }: { images: string[]; name: string }) {
   const [active, setActive] = useState(0);
@@ -19,7 +18,8 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
             className={`relative aspect-square min-w-20 overflow-hidden rounded-xl border bg-[var(--background)] ${active === index ? "ring-2 ring-[var(--primary)]" : ""}`}
             key={`${src}-${index}`}
           >
-            <Image src={src} alt={`${name} thumbnail ${index + 1}`} fill className="object-cover" />
+            {/* eslint-disable-next-line @next/next/no-img-element -- Product images use admin-managed external URLs. */}
+            <img src={src} alt={`${name} thumbnail ${index + 1}`} loading="lazy" className="absolute inset-0 size-full object-cover" />
           </button>
         ))}
       </div>
@@ -32,12 +32,11 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
         >
           <ZoomIn size={18} />
         </button>
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element -- Product images use admin-managed external URLs. */}
+        <img
           src={images[active]}
           alt={`${name} image ${active + 1}`}
-          fill
-          priority
-          className={`object-cover transition duration-500 ${zoom ? "scale-125" : ""}`}
+          className={`absolute inset-0 size-full object-cover transition duration-500 ${zoom ? "scale-125" : ""}`}
         />
         <button
           type="button"

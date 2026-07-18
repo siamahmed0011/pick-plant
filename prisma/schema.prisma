@@ -175,6 +175,13 @@ model Product {
   stockQuantity     Int           @default(0) @map("stock_quantity")
   lowStockThreshold Int?          @map("low_stock_threshold")
   isFeatured        Boolean       @default(false) @map("is_featured")
+  plantSize         String?       @map("plant_size")
+  indoorOutdoor     String?       @map("indoor_outdoor")
+  difficulty        String?
+  lightRequirement  String?       @map("light_requirement")
+  waterRequirement  String?       @map("water_requirement")
+  seoTitle          String?       @map("seo_title")
+  seoDescription    String?       @map("seo_description") @db.Text
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
 
@@ -195,6 +202,12 @@ model ProductImage {
   id        String   @id @default(uuid()) @db.Uuid
   productId String   @map("product_id") @db.Uuid
   url       String   @db.Text
+  publicId  String?  @map("public_id")
+  secureUrl String?  @map("secure_url") @db.Text
+  width     Int?
+  height    Int?
+  format    String?
+  bytes     Int?
   altText   String?  @map("alt_text")
   position  Int      @default(0)
   isPrimary Boolean  @default(false) @map("is_primary")

@@ -21,22 +21,6 @@ export const emptyFilters: ShopFilters = {
 };
 const filterGroups = [
   {
-    key: "categories",
-    title: "Categories",
-    options: [
-      "Indoor Plants",
-      "Outdoor Plants",
-      "Fruit Plants",
-      "Flower Plants",
-      "Medicinal Plants",
-      "Spice Plants",
-      "Seasonal Plants",
-      "Seeds",
-      "Pots & Planters",
-      "Gardening Tools",
-    ],
-  },
-  {
     key: "light",
     title: "Light Requirement",
     options: ["Low Light", "Medium Light", "Bright Light"],
@@ -46,8 +30,13 @@ const filterGroups = [
   { key: "petFriendly", title: "Pet Friendly", options: ["Yes", "No"] },
   { key: "availability", title: "Availability", options: ["In Stock", "Out of Stock"] },
 ] as const;
-type Props = { value: ShopFilters; onChange: (value: ShopFilters) => void; onReset: () => void };
-export function ProductFilters({ value, onChange, onReset }: Props) {
+type Props = {
+  value: ShopFilters;
+  categories: string[];
+  onChange: (value: ShopFilters) => void;
+  onReset: () => void;
+};
+export function ProductFilters({ value, categories, onChange, onReset }: Props) {
   const toggle = (key: keyof ShopFilters, option: string) => {
     const current = value[key];
     if (!Array.isArray(current)) return;
@@ -87,6 +76,22 @@ export function ProductFilters({ value, onChange, onReset }: Props) {
         </div>
       </fieldset>
       <div className="mt-2 divide-y">
+        <fieldset className="py-5 last:pb-0">
+          <legend className="mb-3 font-semibold">Categories</legend>
+          <div className="grid max-h-52 gap-3 overflow-y-auto">
+            {categories.map((option) => (
+              <label className="flex items-center gap-3 text-sm text-[var(--muted)]" key={option}>
+                <Checkbox
+                  checked={value.categories.includes(option)}
+                  onChange={() => toggle("categories", option)}
+                  name="categories"
+                  value={option}
+                />
+                <span>{option}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         {filterGroups.map((group) => (
           <fieldset className="py-5 last:pb-0" key={group.key}>
             <legend className="mb-3 font-semibold">{group.title}</legend>

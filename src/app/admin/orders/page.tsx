@@ -1,9 +1,10 @@
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
-export default function Page() {
+import { AdminPlaceholderPage } from "@/components/admin/admin-placeholder-page";
+
+export default function AdminOrdersPage() {
   return (
-    <AdminPageHeader
+    <AdminPlaceholderPage
       title="Orders"
-      description="Order management interface পরবর্তী phase-এ কার্যকর হবে।"
+      description="Order management will be implemented in a later phase."
     />
   );
 }
