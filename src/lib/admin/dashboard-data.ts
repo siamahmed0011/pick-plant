@@ -68,6 +68,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
         select: {
           id: true,
           orderNumber: true,
+          customerName: true,
           status: true,
           grandTotal: true,
           placedAt: true,
@@ -113,9 +114,10 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
         id: order.id,
         orderNumber: order.orderNumber,
         customer:
+          order.customerName ??
           order.user?.name ??
           order.user?.email ??
-          order.shippingAddress.recipientName ??
+          order.shippingAddress?.recipientName ??
           "Guest customer",
         status: order.status,
         total: Number(order.grandTotal),
