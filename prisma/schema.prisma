@@ -61,6 +61,17 @@ enum ReviewStatus {
   REJECTED
 }
 
+enum InventoryMovementType {
+  INITIAL
+  RESTOCK
+  SALE
+  RETURN
+  DAMAGE
+  LOSS
+  CORRECTION
+  MANUAL_ADJUSTMENT
+}
+
 model User {
   id            String    @id @default(uuid()) @db.Uuid
   role          Role      @default(CUSTOMER)
@@ -74,13 +85,14 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  accounts  Account[]
-  sessions  Session[]
-  wishlists Wishlist[]
-  carts     Cart[]
-  addresses Address[]
-  orders    Order[]
-  reviews   Review[]
+  accounts           Account[]
+  sessions           Session[]
+  wishlists          Wishlist[]
+  carts              Cart[]
+  addresses          Address[]
+  orders             Order[]
+  reviews            Review[]
+  inventoryMovements InventoryMovement[] @relation("InventoryMovementActor")
 
   @@map("users")
 }
@@ -185,17 +197,45 @@ model Product {
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
 
-  category   Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  images     ProductImage[]
-  wishlists  Wishlist[]
-  cartItems  CartItem[]
-  orderItems OrderItem[]
-  reviews    Review[]
+  category           Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  images             ProductImage[]
+  wishlists          Wishlist[]
+  cartItems          CartItem[]
+  orderItems         OrderItem[]
+  reviews            Review[]
+  inventoryMovements InventoryMovement[]
 
   @@index([categoryId, status])
   @@index([status, isFeatured])
   @@index([name])
   @@map("products")
+}
+
+model InventoryMovement {
+  id               String                @id @default(uuid()) @db.Uuid
+  productId        String?               @map("product_id") @db.Uuid
+  performedById    String?               @map("performed_by_id") @db.Uuid
+  type             InventoryMovementType
+  quantity         Int
+  previousStock    Int                   @map("previous_stock")
+  newStock         Int                   @map("new_stock")
+  reason           String                @db.VarChar(120)
+  note             String?               @db.VarChar(500)
+  reference        String?               @db.VarChar(160)
+  productName      String                @map("product_name") @db.VarChar(200)
+  productSku       String                @map("product_sku") @db.VarChar(160)
+  performedByEmail String?               @map("performed_by_email") @db.VarChar(320)
+  performedByName  String?               @map("performed_by_name") @db.VarChar(200)
+  createdAt        DateTime              @default(now()) @map("created_at")
+
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  performedBy User?    @relation("InventoryMovementActor", fields: [performedById], references: [id], onDelete: SetNull)
+
+  @@index([productId, createdAt])
+  @@index([createdAt])
+  @@index([type, createdAt])
+  @@index([performedById, createdAt])
+  @@map("inventory_movements")
 }
 
 model ProductImage {

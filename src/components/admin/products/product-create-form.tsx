@@ -52,7 +52,6 @@ function ProductForm({
     editing ? updateProductAction : createProductAction,
     initialProductActionState,
   );
-  const [name, setName] = useState(product?.name ?? "");
   const [slug, setSlug] = useState(product?.slug ?? "");
   const [slugEdited, setSlugEdited] = useState(editing);
   const [imageMetadata, setImageMetadata] = useState(product?.images ?? []);
@@ -80,7 +79,7 @@ function ProductForm({
               Product Name <span className="sr-only">required</span>
               <Input
                 name="name"
-                value={name}
+                defaultValue={product?.name ?? ""}
                 required
                 minLength={2}
                 maxLength={120}
@@ -90,7 +89,6 @@ function ProductForm({
                 aria-describedby={describedBy("name", Boolean(errors?.name))}
                 onChange={(event) => {
                   const nextName = event.target.value;
-                  setName(nextName);
                   if (!slugEdited) setSlug(createSlug(nextName));
                 }}
               />
@@ -229,38 +227,33 @@ function ProductForm({
               </p>
               <FieldError field="sku" errors={errors} />
             </label>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <label className="grid gap-2 font-medium">
-                Stock <span className="sr-only">required</span>
-                <Input
-                  name="stockQuantity"
-                  type="number"
-                  required
-                  min="0"
-                  step="1"
-                  inputMode="numeric"
-                  defaultValue={product?.stockQuantity ?? "0"}
-                  aria-invalid={Boolean(errors?.stockQuantity)}
-                  aria-describedby={describedBy("stockQuantity", Boolean(errors?.stockQuantity))}
-                />
-                <FieldError field="stockQuantity" errors={errors} />
-              </label>
-              <label className="grid gap-2 font-medium">
-                Low Stock Threshold <span className="text-sm font-normal text-[var(--muted)]">(optional)</span>
-                <Input
-                  name="lowStockThreshold"
-                  type="number"
-                  min="0"
-                  step="1"
-                  inputMode="numeric"
-                  defaultValue={product?.lowStockThreshold ?? ""}
-                  placeholder="5"
-                  aria-invalid={Boolean(errors?.lowStockThreshold)}
-                  aria-describedby={describedBy("lowStockThreshold", Boolean(errors?.lowStockThreshold))}
-                />
-                <FieldError field="lowStockThreshold" errors={errors} />
-              </label>
-            </div>
+            {editing && product ? (
+              <div className="rounded-2xl border bg-[var(--muted-surface)] p-4">
+                <input type="hidden" name="stockQuantity" value={product.stockQuantity} />
+                <input type="hidden" name="lowStockThreshold" value={product.lowStockThreshold} />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div><p className="text-sm text-[var(--muted)]">Current stock</p><p className="mt-1 text-2xl font-bold">{product.stockQuantity}</p></div>
+                  <div><p className="text-sm text-[var(--muted)]">Low-stock threshold</p><p className="mt-1 text-2xl font-bold">{product.lowStockThreshold || "Not set"}</p></div>
+                </div>
+                <p className="mt-4 text-sm text-[var(--muted)]">Stock is managed through Inventory so every change has an audit record.</p>
+                <Link href={`/admin/inventory/${product.id}`} className="mt-4 inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--primary)] px-4 text-sm font-semibold text-[var(--primary)] hover:bg-white">
+                  Manage inventory
+                </Link>
+              </div>
+            ) : (
+              <div className="grid gap-5 sm:grid-cols-2">
+                <label className="grid gap-2 font-medium">
+                  Stock <span className="sr-only">required</span>
+                  <Input name="stockQuantity" type="number" required min="0" step="1" inputMode="numeric" defaultValue="0" aria-invalid={Boolean(errors?.stockQuantity)} aria-describedby={describedBy("stockQuantity", Boolean(errors?.stockQuantity))} />
+                  <FieldError field="stockQuantity" errors={errors} />
+                </label>
+                <label className="grid gap-2 font-medium">
+                  Low Stock Threshold <span className="text-sm font-normal text-[var(--muted)]">(optional)</span>
+                  <Input name="lowStockThreshold" type="number" min="0" step="1" inputMode="numeric" defaultValue="" placeholder="5" aria-invalid={Boolean(errors?.lowStockThreshold)} aria-describedby={describedBy("lowStockThreshold", Boolean(errors?.lowStockThreshold))} />
+                  <FieldError field="lowStockThreshold" errors={errors} />
+                </label>
+              </div>
+            )}
           </ProductFormSection>
 
           <ProductFormSection

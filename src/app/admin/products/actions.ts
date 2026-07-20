@@ -24,6 +24,8 @@ function databaseErrorCode(error: unknown) {
 
 function refreshProductPaths(product: { slug: string; categorySlug: string }) {
   revalidatePath("/admin/products");
+  revalidatePath("/admin/inventory");
+  revalidatePath("/admin/inventory/history");
   revalidatePath("/plants");
   revalidatePath(`/plants/${product.slug}`);
   revalidatePath(`/categories/${product.categorySlug}`);

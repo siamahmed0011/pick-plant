@@ -111,10 +111,18 @@ export const getStorefrontProducts = cache(async (): Promise<Product[]> => {
       typeof error === "object" && error !== null && "code" in error
         ? String(error.code)
         : undefined;
-    console.error("Storefront products could not be loaded from the database.", {
+    const errorDetails = {
       name: error instanceof Error ? error.name : "UnknownError",
       code,
-    });
+    };
+
+    // Next.js opens its development error overlay for console.error calls,
+    // even though this failure is handled by the static-product fallback.
+    if (process.env.NODE_ENV === "development") {
+      console.warn("Storefront products could not be loaded from the database.", errorDetails);
+    } else {
+      console.error("Storefront products could not be loaded from the database.", errorDetails);
+    }
     return staticProducts;
   }
 });

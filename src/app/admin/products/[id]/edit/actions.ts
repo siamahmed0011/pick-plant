@@ -115,8 +115,6 @@ export async function updateProductAction(
             description: input.description,
             price: input.salePrice ?? input.regularPrice,
             compareAtPrice: input.salePrice === null ? null : input.regularPrice,
-            stockQuantity: input.stockQuantity,
-            lowStockThreshold: input.lowStockThreshold,
             status: input.status,
             isFeatured: input.isFeatured,
             plantSize: input.plantSize,
@@ -193,6 +191,8 @@ export async function updateProductAction(
   if (!paths) return failure("The product could not be updated. Please try again.");
 
   revalidatePath("/admin/products");
+  revalidatePath("/admin/inventory");
+  revalidatePath(`/admin/inventory/${productId.data}`);
   revalidatePath("/plants");
   revalidatePath(`/plants/${paths.oldSlug}`);
   revalidatePath(`/plants/${input.slug}`);

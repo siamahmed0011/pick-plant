@@ -9,6 +9,7 @@ import {
 import { requireAdmin } from "@/lib/auth/guards";
 import { prisma } from "@/lib/prisma";
 import { normalizeProductImages } from "@/lib/admin/product-images";
+import { recordInitialInventoryMovement } from "@/lib/admin/inventory";
 import { moveCloudinaryImage } from "@/lib/cloudinary";
 import type { ProductActionState, ProductFormField } from "@/types/admin-product";
 
@@ -29,7 +30,7 @@ export async function createProductAction(
   _previousState: ProductActionState,
   formData: FormData,
 ): Promise<ProductActionState> {
-  await requireAdmin("/admin/products/new");
+  const session = await requireAdmin("/admin/products/new");
   const parsed = productFormSchema.safeParse(productFormData(formData));
 
   if (!parsed.success) {
@@ -112,6 +113,12 @@ export async function createProductAction(
           },
         });
 
+        await recordInitialInventoryMovement(
+          transaction,
+          created,
+          { id: session.user.id, name: session.user.name, email: session.user.email },
+        );
+
         return {
           productId: created.id,
           tempPublicIds: normalizedImages.images
@@ -174,6 +181,8 @@ export async function createProductAction(
   }
 
   revalidatePath("/admin/products");
+  revalidatePath("/admin/inventory");
+  revalidatePath("/admin/inventory/history");
   revalidatePath("/plants");
   revalidatePath(`/plants/${input.slug}`);
   redirect("/admin/products?created=1");
