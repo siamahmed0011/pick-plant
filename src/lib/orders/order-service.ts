@@ -27,6 +27,7 @@ export type OrderActor = {
 import { validateAndCalculateCoupon, redeemCouponInTransaction } from "@/lib/coupons/coupon-service";
 import { calculateShippingCost } from "@/lib/shipping/shipping-service";
 import { PaymentProvider, TransactionStatus } from "@/generated/prisma/enums";
+import { createSSLCommerzMerchantTransactionReference } from "@/lib/payments/providers/sslcommerz";
 
 export async function createOrder(input: CheckoutInput, userId?: string) {
   const validated = checkoutFormSchema.parse(input);
@@ -250,8 +251,15 @@ export async function createOrder(input: CheckoutInput, userId?: string) {
           status: initialTxStatus,
           amount: grandTotal,
           currency: "BDT",
-          transactionId: validated.manualTransactionRef || `${provider}-${order.orderNumber}`,
-          providerReference: validated.manualTransactionRef || null,
+          transactionId:
+            provider === PaymentProvider.SSLCOMMERZ
+              ? createSSLCommerzMerchantTransactionReference()
+              : validated.manualTransactionRef ||
+                `${provider}-${order.orderNumber}`,
+          providerReference:
+            provider === PaymentProvider.SSLCOMMERZ
+              ? null
+              : validated.manualTransactionRef || null,
         },
       });
 
