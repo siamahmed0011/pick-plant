@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "provision:admin": "tsx scripts/provision-admin.ts"
+    "provision:admin": "tsx scripts/provision-admin.ts",
+    "seed:blogs": "tsx scripts/seed-blogs.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

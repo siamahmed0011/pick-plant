@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getBlogPostBySlug, getRelatedBlogPosts, getPublishedBlogPosts } from "@/lib/blog/blog-service";
+import { getBlogPostBySlug, getRelatedBlogPosts } from "@/lib/blog/blog-service";
 import { BlogDetailView } from "@/components/blog/blog-detail-view";
 
 type Props = { params: Promise<{ slug: string }> };
 
-export async function generateStaticParams() {
-  const posts = await getPublishedBlogPosts();
-  return posts.map((post) => ({ slug: post.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
