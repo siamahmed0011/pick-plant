@@ -1,0 +1,2 @@
+-- RenameIndex
+ALTER INDEX "processed_payment_events_payment_transaction_id_processed_at_id" RENAME TO "processed_payment_events_payment_transaction_id_processed_a_idx";
