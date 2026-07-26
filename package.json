@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "expire:orders": "tsx scripts/expire-orders.ts",
     "provision:admin": "tsx scripts/provision-admin.ts",
     "seed:blogs": "tsx scripts/seed-blogs.ts"
   },

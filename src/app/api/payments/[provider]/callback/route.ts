@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { PaymentProvider, PaymentStatus } from "@/generated/prisma/enums";
-import { getPaymentAdapter } from "@/lib/payments/payment-service";
+import { PaymentProvider } from "@/generated/prisma/enums";
 import {
   assertStripePaymentIntentShape,
   assertStripeSessionShape,
@@ -11,6 +10,18 @@ import {
   StripeVerificationError,
   toStripeMinorUnits,
 } from "@/lib/payments/providers/stripe";
+import {
+  fingerprintSSLCommerzValue,
+  sanitizedSSLCommerzErrorContext,
+  SSLCommerzConfigurationError,
+  SSLCommerzProofError,
+  SSLCommerzProviderUnavailableError,
+} from "@/lib/payments/providers/sslcommerz";
+import {
+  isSubmittedSSLCommerzFailure,
+  readSSLCommerzRequestPayload,
+  reconcileSSLCommerzPayment,
+} from "@/lib/payments/sslcommerz-reconciliation";
 
 async function handleStripeCallback(request: Request) {
   try {
@@ -74,109 +85,129 @@ async function handleStripeCallback(request: Request) {
   }
 }
 
+function callbackUrl(request: Request, path: string) {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
+  return new URL(path, baseUrl);
+}
+
+function callbackErrorResponse(
+  error: unknown,
+  validationId: string | null,
+) {
+  if (error instanceof SSLCommerzProofError) {
+    return NextResponse.json(
+      { error: "SSLCommerz payment proof is invalid." },
+      { status: 400 },
+    );
+  }
+
+  if (error instanceof SSLCommerzConfigurationError) {
+    console.error(
+      "SSLCommerz callback configuration failure.",
+      sanitizedSSLCommerzErrorContext(error, {
+        route: "sslcommerz-callback",
+      }),
+    );
+    return NextResponse.json(
+      { error: "SSLCommerz payment verification is unavailable." },
+      { status: 503 },
+    );
+  }
+
+  if (error instanceof SSLCommerzProviderUnavailableError) {
+    console.error(
+      "SSLCommerz callback provider failure.",
+      sanitizedSSLCommerzErrorContext(error, {
+        route: "sslcommerz-callback",
+        validationIdHash: validationId
+          ? fingerprintSSLCommerzValue(validationId)
+          : "missing",
+      }),
+    );
+    return NextResponse.json(
+      { error: "SSLCommerz payment verification is temporarily unavailable." },
+      { status: error.httpStatus },
+    );
+  }
+
+  console.error(
+    "SSLCommerz callback database failure.",
+    sanitizedSSLCommerzErrorContext(error, {
+      route: "sslcommerz-callback",
+      validationIdHash: validationId
+        ? fingerprintSSLCommerzValue(validationId)
+        : "missing",
+    }),
+  );
+  return NextResponse.json(
+    { error: "SSLCommerz payment verification failed." },
+    { status: 500 },
+  );
+}
+
+async function handleSSLCommerzCallback(request: Request) {
+  let validationId: string | null = null;
+
+  try {
+    const payload = await readSSLCommerzRequestPayload(request);
+    validationId =
+      typeof payload.val_id === "string" && payload.val_id.trim()
+        ? payload.val_id.trim()
+        : null;
+
+    if (isSubmittedSSLCommerzFailure(payload)) {
+      return NextResponse.redirect(
+        callbackUrl(request, "/checkout?error=payment_failed"),
+      );
+    }
+
+    const result = await reconcileSSLCommerzPayment(payload, "callback");
+
+    if (result.paymentConfirmed) {
+      const successUrl = callbackUrl(request, "/checkout/success");
+      successUrl.searchParams.set("orderNumber", result.orderNumber);
+      return NextResponse.redirect(successUrl);
+    }
+
+    return NextResponse.redirect(
+      callbackUrl(request, "/checkout?error=payment_pending_review"),
+    );
+  } catch (error) {
+    return callbackErrorResponse(error, validationId);
+  }
+}
+
+async function routeCallback(
+  request: Request,
+  { params }: { params: Promise<{ provider: string }> },
+) {
+  const { provider: rawProvider } = await params;
+  const provider = rawProvider.toLowerCase();
+
+  if (provider === "stripe") {
+    return handleStripeCallback(request);
+  }
+  if (provider === "sslcommerz") {
+    return handleSSLCommerzCallback(request);
+  }
+
+  return NextResponse.json(
+    { error: "Unsupported payment callback provider." },
+    { status: 404 },
+  );
+}
+
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ provider: string }> }
+  context: { params: Promise<{ provider: string }> },
 ) {
-  try {
-    const { provider: rawProvider } = await params;
-
-    if (rawProvider.toLowerCase() === "stripe") {
-      return handleStripeCallback(request);
-    }
-
-    const providerEnum = rawProvider.toUpperCase() as PaymentProvider;
-
-    const contentType = request.headers.get("content-type") || "";
-    let payload: Record<string, unknown> = {};
-
-    if (contentType.includes("application/x-www-form-urlencoded")) {
-      const text = await request.text();
-      const searchParams = new URLSearchParams(text);
-      payload = Object.fromEntries(searchParams.entries());
-    } else {
-      payload = await request.json();
-    }
-
-    const adapter = getPaymentAdapter(providerEnum);
-    const verification = await adapter.verifyPayment(payload);
-
-    const orderNumber =
-      (payload.tran_id as string) ||
-      (payload.client_reference_id as string) ||
-      (payload.orderNumber as string);
-
-    if (!orderNumber) {
-      return NextResponse.json({ error: "Order reference missing in callback" }, { status: 400 });
-    }
-
-    const order = await prisma.order.findUnique({
-      where: { orderNumber },
-    });
-
-    if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    // Idempotency check: if order is already paid, ignore duplicate callback
-    if (order.paymentStatus === PaymentStatus.PAID && verification.success) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL}/checkout/success?orderNumber=${order.orderNumber}`);
-    }
-
-    await prisma.$transaction(async (tx) => {
-      const existingTx = await tx.paymentTransaction.findFirst({
-        where: { orderId: order.id, provider: providerEnum },
-      });
-
-      if (existingTx) {
-        await tx.paymentTransaction.update({
-          where: { id: existingTx.id },
-          data: {
-            status: verification.status,
-            providerReference: verification.providerReference || existingTx.providerReference,
-            verifiedAt: verification.success ? new Date() : undefined,
-            failedAt: !verification.success ? new Date() : undefined,
-            failureReason: verification.failureReason || null,
-            rawMetadataJson: verification.rawMetadataJson || null,
-          },
-        });
-      }
-
-      const newPaymentStatus = verification.success ? PaymentStatus.PAID : PaymentStatus.FAILED;
-
-      await tx.order.update({
-        where: { id: order.id },
-        data: {
-          paymentStatus: newPaymentStatus,
-        },
-      });
-
-      await tx.orderStatusHistory.create({
-        data: {
-          orderId: order.id,
-          status: order.status,
-          paymentStatus: newPaymentStatus,
-          note: `${providerEnum} callback processed: ${
-            verification.success ? "Payment Successful" : verification.failureReason || "Payment Failed"
-          }`,
-        },
-      });
-    });
-
-    if (verification.success) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL}/checkout/success?orderNumber=${order.orderNumber}`);
-    }
-
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL}/checkout?error=payment_failed`);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Callback processing failed";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+  return routeCallback(request, context);
 }
 
 export async function GET(
   request: Request,
-  props: { params: Promise<{ provider: string }> }
+  context: { params: Promise<{ provider: string }> },
 ) {
-  return POST(request, props);
+  return routeCallback(request, context);
 }

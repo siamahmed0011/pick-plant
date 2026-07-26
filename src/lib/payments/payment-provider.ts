@@ -3,19 +3,22 @@ import { PaymentProvider, TransactionStatus } from "@/generated/prisma/enums";
 export type PaymentInitiateOptions = {
   orderId: string;
   orderNumber: string;
-  amount: number;
+  amount: number | string;
   currency: string;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
   returnUrl?: string;
   idempotencyKey?: string;
+  transactionReference?: string;
 };
 
 export type PaymentInitiateResult = {
   success: boolean;
   redirectUrl?: string;
   transactionId?: string;
+  providerReference?: string;
+  rawMetadataJson?: string;
   isManual?: boolean;
   isCod?: boolean;
   message?: string;

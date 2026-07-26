@@ -13,6 +13,22 @@ import {
   StripeVerificationError,
   toStripeMinorUnits,
 } from "@/lib/payments/providers/stripe";
+import {
+  fingerprintSSLCommerzValue,
+  sanitizedSSLCommerzErrorContext,
+  SSLCommerzConfigurationError,
+  SSLCommerzProofError,
+  SSLCommerzProviderUnavailableError,
+} from "@/lib/payments/providers/sslcommerz";
+import {
+  isSubmittedSSLCommerzFailure,
+  readSSLCommerzRequestPayload,
+  reconcileSSLCommerzPayment,
+} from "@/lib/payments/sslcommerz-reconciliation";
+import {
+  confirmOrderPaymentWithinReservation,
+  PaymentReservationUnavailableError,
+} from "@/lib/orders/payment-release-fence";
 
 async function handleStripeWebhook(request: Request) {
   const signature = request.headers.get("stripe-signature");
@@ -157,13 +173,16 @@ async function handleStripeWebhook(request: Request) {
         },
       });
 
-      await tx.order.update({
-        where: { id: payment.orderId },
-        data: {
-          paymentStatus: PaymentStatus.PAID,
-          paymentReference: verified.paymentIntentId,
-        },
+      const paidOrder = await confirmOrderPaymentWithinReservation(tx, {
+        orderId: payment.orderId,
+        provider: PaymentProvider.STRIPE,
+        paymentReference: verified.paymentIntentId,
       });
+      if (paidOrder.count !== 1) {
+        throw new PaymentReservationUnavailableError(
+          "The order reservation is no longer payable.",
+        );
+      }
 
       await tx.orderStatusHistory.create({
         data: {
@@ -179,6 +198,13 @@ async function handleStripeWebhook(request: Request) {
 
     return NextResponse.json({ received: true, status: result });
   } catch (error) {
+    if (error instanceof PaymentReservationUnavailableError) {
+      return NextResponse.json({
+        received: true,
+        status: "ignored_unavailable_reservation",
+      });
+    }
+
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
@@ -191,67 +217,102 @@ async function handleStripeWebhook(request: Request) {
   }
 }
 
+async function handleSSLCommerzWebhook(request: Request) {
+  let validationId: string | null = null;
+
+  try {
+    const payload = await readSSLCommerzRequestPayload(request);
+    validationId =
+      typeof payload.val_id === "string" && payload.val_id.trim()
+        ? payload.val_id.trim()
+        : null;
+
+    if (isSubmittedSSLCommerzFailure(payload)) {
+      return NextResponse.json({
+        received: true,
+        status: "ignored_unverified_failure",
+      });
+    }
+
+    const result = await reconcileSSLCommerzPayment(payload, "ipn");
+
+    return NextResponse.json({
+      received: true,
+      status: result.outcome,
+      paymentConfirmed: result.paymentConfirmed,
+    });
+  } catch (error) {
+    if (error instanceof SSLCommerzProofError) {
+      return NextResponse.json(
+        { error: "SSLCommerz payment proof is invalid." },
+        { status: 400 },
+      );
+    }
+
+    if (error instanceof SSLCommerzConfigurationError) {
+      console.error(
+        "SSLCommerz IPN configuration failure.",
+        sanitizedSSLCommerzErrorContext(error, {
+          route: "sslcommerz-ipn",
+        }),
+      );
+      return NextResponse.json(
+        { error: "SSLCommerz payment verification is unavailable." },
+        { status: 503 },
+      );
+    }
+
+    if (error instanceof SSLCommerzProviderUnavailableError) {
+      console.error(
+        "SSLCommerz IPN provider failure.",
+        sanitizedSSLCommerzErrorContext(error, {
+          route: "sslcommerz-ipn",
+          validationIdHash: validationId
+            ? fingerprintSSLCommerzValue(validationId)
+            : "missing",
+        }),
+      );
+      return NextResponse.json(
+        {
+          error:
+            "SSLCommerz payment verification is temporarily unavailable.",
+        },
+        { status: error.httpStatus },
+      );
+    }
+
+    console.error(
+      "SSLCommerz IPN database failure.",
+      sanitizedSSLCommerzErrorContext(error, {
+        route: "sslcommerz-ipn",
+        validationIdHash: validationId
+          ? fingerprintSSLCommerzValue(validationId)
+          : "missing",
+      }),
+    );
+    return NextResponse.json(
+      { error: "SSLCommerz payment verification failed." },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ provider: string }> }
+  { params }: { params: Promise<{ provider: string }> },
 ) {
-  try {
-    const { provider: rawProvider } = await params;
+  const { provider: rawProvider } = await params;
+  const provider = rawProvider.toLowerCase();
 
-    if (rawProvider.toLowerCase() === "stripe") {
-      return handleStripeWebhook(request);
-    }
-
-    const providerEnum = rawProvider.toUpperCase() as PaymentProvider;
-
-    const payload = await request.json();
-
-    // Verify webhook signature or reference
-    const orderNumber = payload.orderNumber || payload.data?.object?.client_reference_id;
-    if (!orderNumber) {
-      return NextResponse.json({ received: true, status: "ignored_no_order" });
-    }
-
-    const order = await prisma.order.findUnique({
-      where: { orderNumber },
-    });
-
-    if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    if (order.paymentStatus === PaymentStatus.PAID) {
-      return NextResponse.json({ received: true, status: "already_paid" });
-    }
-
-    await prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { id: order.id },
-        data: { paymentStatus: PaymentStatus.PAID },
-      });
-
-      await tx.paymentTransaction.updateMany({
-        where: { orderId: order.id, provider: providerEnum },
-        data: {
-          status: TransactionStatus.VERIFIED,
-          verifiedAt: new Date(),
-          rawMetadataJson: JSON.stringify(payload),
-        },
-      });
-
-      await tx.orderStatusHistory.create({
-        data: {
-          orderId: order.id,
-          status: order.status,
-          paymentStatus: PaymentStatus.PAID,
-          note: `Webhook payment notification verified for ${providerEnum}`,
-        },
-      });
-    });
-
-    return NextResponse.json({ received: true, status: "success" });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Webhook error";
-    return NextResponse.json({ error: message }, { status: 400 });
+  if (provider === "stripe") {
+    return handleStripeWebhook(request);
   }
+  if (provider === "sslcommerz") {
+    return handleSSLCommerzWebhook(request);
+  }
+
+  return NextResponse.json(
+    { error: "Unsupported payment webhook provider." },
+    { status: 404 },
+  );
 }

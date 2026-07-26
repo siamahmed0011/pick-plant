@@ -404,6 +404,9 @@ model Order {
   shippingCost          Decimal           @default(0) @map("shipping_cost") @db.Decimal(12, 2)
   estimatedDeliveryText String?           @map("estimated_delivery_text")
   placedAt              DateTime?         @map("placed_at")
+  expiresAt             DateTime?         @map("expires_at")
+  expirationRetryAt     DateTime?         @map("expiration_retry_at")
+  reservationReleasedAt DateTime?         @map("reservation_released_at")
   cancelledAt           DateTime?         @map("cancelled_at")
   createdAt             DateTime          @default(now()) @map("created_at")
   updatedAt             DateTime          @updatedAt @map("updated_at")
@@ -421,6 +424,7 @@ model Order {
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@index([paymentStatus])
+  @@index([status, paymentProvider, paymentStatus, reservationReleasedAt, expirationRetryAt, expiresAt], map: "orders_expiration_cleanup_idx")
   @@map("orders")
 }
 

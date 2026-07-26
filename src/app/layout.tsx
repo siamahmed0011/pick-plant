@@ -1,14 +1,8 @@
 import type { Metadata } from "next";
-import { Hind_Siliguri } from "next/font/google";
 import "./globals.css";
 import "@/styles/animations.css";
 import { AppProviders } from "@/providers/app-providers";
 
-const hind = Hind_Siliguri({
-  subsets: ["bengali", "latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: {
@@ -39,7 +33,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="bn">
-      <body className={hind.className}>
+      <body className="font-bengali-system">
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

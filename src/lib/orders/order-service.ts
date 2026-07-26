@@ -29,6 +29,36 @@ import { calculateShippingCost } from "@/lib/shipping/shipping-service";
 import { PaymentProvider, TransactionStatus } from "@/generated/prisma/enums";
 import { createSSLCommerzMerchantTransactionReference } from "@/lib/payments/providers/sslcommerz";
 
+const ONLINE_ORDER_EXPIRATION_MS = 30 * 60 * 1000;
+const EXPIRATION_RETRY_DELAY_MS = 5 * 60 * 1000;
+const RELEASABLE_PAYMENT_STATUSES: PaymentStatus[] = [
+  PaymentStatus.PENDING,
+  PaymentStatus.UNPAID,
+  PaymentStatus.FAILED,
+];
+
+type ReservationReleaseRequest =
+  | {
+      cause: "CANCELLATION";
+      actor: OrderActor;
+      reason: string;
+    }
+  | {
+      cause: "EXPIRATION";
+      now?: Date;
+    };
+
+function onlineOrderExpiresAt(provider: PaymentProvider) {
+  if (
+    provider !== PaymentProvider.STRIPE &&
+    provider !== PaymentProvider.SSLCOMMERZ
+  ) {
+    return null;
+  }
+
+  return new Date(Date.now() + ONLINE_ORDER_EXPIRATION_MS);
+}
+
 export async function createOrder(input: CheckoutInput, userId?: string) {
   const validated = checkoutFormSchema.parse(input);
 
@@ -182,6 +212,7 @@ export async function createOrder(input: CheckoutInput, userId?: string) {
       } else if (pmUpper.includes("STRIPE")) {
         provider = PaymentProvider.STRIPE;
       }
+      const expiresAt = onlineOrderExpiresAt(provider);
 
       // 6. Create Order
       const order = await tx.order.create({
@@ -216,6 +247,8 @@ export async function createOrder(input: CheckoutInput, userId?: string) {
           shippingCost: shippingTotal,
           estimatedDeliveryText: shippingCalc.estimatedDeliveryText,
           placedAt: new Date(),
+          expiresAt,
+          expirationRetryAt: expiresAt,
           items: {
             create: orderItemsData,
           },
@@ -312,6 +345,16 @@ export async function updateOrderStatus(
   input: { orderId: string; status: OrderStatus; note?: string | null },
   actor: OrderActor
 ) {
+  if (input.status === OrderStatus.CANCELLED) {
+    return cancelOrder(
+      {
+        orderId: input.orderId,
+        reason: input.note || "Order cancelled by admin",
+      },
+      actor,
+    );
+  }
+
   return prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { id: input.orderId },
@@ -328,11 +371,6 @@ export async function updateOrderStatus(
       throw new OrderValidationError(
         `Cannot change order status from ${order.status} to ${input.status}.`
       );
-    }
-
-    // Handle cancellation stock restoration inside this transition if cancelling via admin
-    if (input.status === OrderStatus.CANCELLED) {
-      return cancelOrderInternal(tx, order, actor, input.note || "Order cancelled by admin");
     }
 
     const updated = await tx.order.update({
@@ -406,105 +444,296 @@ export async function cancelOrder(
   input: { orderId: string; reason?: string },
   actor: OrderActor
 ) {
-  return prisma.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({
-      where: { id: input.orderId },
-      include: { items: true },
-    });
-
-    if (!order) throw new OrderNotFoundError("Order not found.");
-
-    if (order.status === OrderStatus.CANCELLED) {
-      return order; // Already cancelled
-    }
-
-    if (actor.role === "CUSTOMER") {
-      if (order.userId !== actor.id) {
-        throw new OrderValidationError("You do not have permission to cancel this order.");
-      }
-      if (!isCancellableByCustomer(order.status)) {
-        throw new OrderValidationError("Order cannot be cancelled after it has been shipped.");
-      }
-    } else if (actor.role === "ADMIN") {
-      if (!isCancellableByAdmin(order.status)) {
-        throw new OrderValidationError(`Order in status ${order.status} cannot be cancelled.`);
-      }
-    }
-
-    return cancelOrderInternal(tx, order, actor, input.reason || "Order cancelled");
+  const result = await releaseReservation(input.orderId, {
+    cause: "CANCELLATION",
+    actor,
+    reason: input.reason || "Order cancelled",
   });
+
+  return result.order;
 }
 
-// Internal reusable helper for cancellation logic within a transaction
-async function cancelOrderInternal(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tx: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  order: any,
-  actor: OrderActor,
-  reason: string
+export async function releaseReservation(
+  orderId: string,
+  request: ReservationReleaseRequest,
+  remainingRetries = 2,
 ) {
-  // 1. Update Order status to CANCELLED
-  const updatedOrder = await tx.order.update({
-    where: { id: order.id },
-    data: {
-      status: OrderStatus.CANCELLED,
-      cancelledAt: new Date(),
-    },
-  });
-
-  // 2. Restore stock & create InventoryMovement for each item
-  for (const item of order.items) {
-    if (item.productId) {
-      const product = await tx.product.findUnique({
-        where: { id: item.productId },
-        select: { id: true, name: true, sku: true, stockQuantity: true },
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const now = request.cause === "EXPIRATION" ? request.now ?? new Date() : new Date();
+      const order = await tx.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: true,
+          couponRedemption: {
+            select: { couponId: true },
+          },
+        },
       });
 
-      if (product) {
-        const previousStock = product.stockQuantity;
-        const newStock = previousStock + item.quantity;
+      if (!order) throw new OrderNotFoundError("Order not found.");
 
-        await tx.product.update({
-          where: { id: product.id },
-          data: { stockQuantity: newStock },
+      if (request.cause === "CANCELLATION") {
+        const { actor } = request;
+
+        if (actor.role === "CUSTOMER") {
+          if (order.userId !== actor.id) {
+            throw new OrderValidationError("You do not have permission to cancel this order.");
+          }
+          if (
+            order.status === OrderStatus.CANCELLED &&
+            order.reservationReleasedAt
+          ) {
+            return { order, released: false };
+          }
+          if (!isCancellableByCustomer(order.status)) {
+            throw new OrderValidationError("Order cannot be cancelled after it has been shipped.");
+          }
+        } else if (!isCancellableByAdmin(order.status)) {
+          if (
+            order.status === OrderStatus.CANCELLED &&
+            order.reservationReleasedAt
+          ) {
+            return { order, released: false };
+          }
+          throw new OrderValidationError(
+            `Order in status ${order.status} cannot be cancelled.`,
+          );
+        }
+      } else if (
+        order.status !== OrderStatus.PENDING ||
+        (order.paymentProvider !== PaymentProvider.STRIPE &&
+          order.paymentProvider !== PaymentProvider.SSLCOMMERZ) ||
+        !order.expiresAt ||
+        order.expiresAt > now
+      ) {
+        return { order, released: false };
+      }
+
+      if (order.reservationReleasedAt) {
+        return { order, released: false };
+      }
+
+      if (!RELEASABLE_PAYMENT_STATUSES.includes(order.paymentStatus)) {
+        if (request.cause === "EXPIRATION") {
+          return { order, released: false };
+        }
+        throw new OrderValidationError(
+          "A paid, authorized, or refunded order cannot release its reservation.",
+        );
+      }
+
+      const claimed = await tx.order.updateMany({
+        where: {
+          id: order.id,
+          reservationReleasedAt: null,
+          paymentStatus: { in: RELEASABLE_PAYMENT_STATUSES },
+          ...(request.cause === "EXPIRATION"
+            ? {
+                status: OrderStatus.PENDING,
+                paymentProvider: {
+                  in: [
+                    PaymentProvider.STRIPE,
+                    PaymentProvider.SSLCOMMERZ,
+                  ],
+                },
+                expiresAt: { not: null, lte: now },
+              }
+            : {}),
+        },
+        data: {
+          status: OrderStatus.CANCELLED,
+          cancelledAt: now,
+          reservationReleasedAt: now,
+        },
+      });
+
+      if (claimed.count !== 1) {
+        const current = await tx.order.findUnique({ where: { id: order.id } });
+        if (!current) throw new OrderNotFoundError("Order not found.");
+        return { order: current, released: false };
+      }
+
+      for (const item of order.items) {
+        if (!item.productId) continue;
+
+        const product = await tx.product.update({
+          where: { id: item.productId },
+          data: {
+            stockQuantity: { increment: item.quantity },
+          },
+          select: {
+            id: true,
+            name: true,
+            sku: true,
+            stockQuantity: true,
+          },
         });
+        const previousStock = product.stockQuantity - item.quantity;
 
         await tx.inventoryMovement.create({
           data: {
             product: { connect: { id: product.id } },
-            performedBy: actor.id ? { connect: { id: actor.id } } : undefined,
+            performedBy:
+              request.cause === "CANCELLATION" && request.actor.id
+                ? { connect: { id: request.actor.id } }
+                : undefined,
             type: InventoryMovementType.RESTOCK,
             quantity: item.quantity,
             previousStock,
-            newStock,
-            reason: "Order Cancellation",
-            note: reason,
+            newStock: product.stockQuantity,
+            reason:
+              request.cause === "EXPIRATION"
+                ? "Order Reservation Expired"
+                : "Order Cancellation",
+            note:
+              request.cause === "EXPIRATION"
+                ? "Unpaid order reservation expired automatically."
+                : request.reason,
             reference: order.orderNumber,
             productName: item.productName || product.name,
             productSku: item.sku || product.sku,
-            performedByEmail: actor.email,
-            performedByName: actor.name,
+            performedByEmail:
+              request.cause === "CANCELLATION" ? request.actor.email : null,
+            performedByName:
+              request.cause === "CANCELLATION" ? request.actor.name : "System",
           },
         });
       }
+
+      if (order.couponRedemption) {
+        const releasedRedemption = await tx.couponRedemption.deleteMany({
+          where: {
+            orderId: order.id,
+            couponId: order.couponRedemption.couponId,
+          },
+        });
+
+        if (releasedRedemption.count === 1) {
+          await tx.coupon.updateMany({
+            where: {
+              id: order.couponRedemption.couponId,
+              usedCount: { gt: 0 },
+            },
+            data: {
+              usedCount: { decrement: 1 },
+            },
+          });
+        }
+      }
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          status: OrderStatus.CANCELLED,
+          paymentStatus: order.paymentStatus,
+          note:
+            request.cause === "EXPIRATION"
+              ? "Unpaid order reservation expired automatically."
+              : request.reason,
+          performedById:
+            request.cause === "CANCELLATION" ? request.actor.id : null,
+          performedByName:
+            request.cause === "CANCELLATION" ? request.actor.name : "System",
+          performedByRole:
+            request.cause === "CANCELLATION" ? request.actor.role : "SYSTEM",
+        },
+      });
+
+      const updatedOrder = await tx.order.findUnique({
+        where: { id: order.id },
+      });
+      if (!updatedOrder) throw new OrderNotFoundError("Order not found.");
+
+      return { order: updatedOrder, released: true };
+    }, { isolationLevel: "Serializable" });
+  } catch (error) {
+    if (
+      remainingRetries > 0 &&
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2034"
+    ) {
+      return releaseReservation(orderId, request, remainingRetries - 1);
+    }
+
+    throw error;
+  }
+}
+
+export async function expireStaleUnpaidOrders(limit = 100) {
+  const batchSize = Math.max(1, Math.min(limit, 500));
+  const now = new Date();
+  const candidates = await prisma.order.findMany({
+    where: {
+      status: OrderStatus.PENDING,
+      paymentProvider: {
+        in: [PaymentProvider.STRIPE, PaymentProvider.SSLCOMMERZ],
+      },
+      paymentStatus: { in: RELEASABLE_PAYMENT_STATUSES },
+      expiresAt: { not: null, lte: now },
+      expirationRetryAt: { not: null, lte: now },
+      reservationReleasedAt: null,
+    },
+    orderBy: [
+      { expirationRetryAt: "asc" },
+      { expiresAt: "asc" },
+      { id: "asc" },
+    ],
+    select: { id: true },
+    take: batchSize,
+  });
+
+  let expired = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const candidate of candidates) {
+    try {
+      const result = await releaseReservation(candidate.id, {
+        cause: "EXPIRATION",
+        now,
+      });
+      if (result.released) expired += 1;
+      else skipped += 1;
+    } catch (error) {
+      failed += 1;
+      const retryAt = new Date(now.getTime() + EXPIRATION_RETRY_DELAY_MS);
+
+      try {
+        await prisma.order.updateMany({
+          where: {
+            id: candidate.id,
+            status: OrderStatus.PENDING,
+            paymentProvider: {
+              in: [PaymentProvider.STRIPE, PaymentProvider.SSLCOMMERZ],
+            },
+            paymentStatus: { in: RELEASABLE_PAYMENT_STATUSES },
+            reservationReleasedAt: null,
+            expiresAt: { not: null, lte: now },
+          },
+          data: { expirationRetryAt: retryAt },
+        });
+      } catch {
+        // The endpoint returns a retryable failure and the next run can retry.
+      }
+
+      console.error("Order reservation expiration failed.", {
+        orderId: candidate.id,
+        errorName: error instanceof Error ? error.name : "UnknownError",
+        errorCode:
+          error instanceof Prisma.PrismaClientKnownRequestError
+            ? error.code
+            : undefined,
+      });
     }
   }
 
-  // 3. Log OrderStatusHistory
-  await tx.orderStatusHistory.create({
-    data: {
-      orderId: order.id,
-      status: OrderStatus.CANCELLED,
-      paymentStatus: order.paymentStatus,
-      note: reason,
-      performedById: actor.id,
-      performedByName: actor.name,
-      performedByRole: actor.role,
-    },
-  });
-
-  return updatedOrder;
+  return {
+    scanned: candidates.length,
+    expired,
+    skipped,
+    failed,
+  };
 }
 
 export async function updateAdminNotes(input: { orderId: string; adminNotes: string }) {
