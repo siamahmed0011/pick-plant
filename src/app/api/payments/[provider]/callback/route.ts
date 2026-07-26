@@ -2,6 +2,77 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PaymentProvider, PaymentStatus } from "@/generated/prisma/enums";
 import { getPaymentAdapter } from "@/lib/payments/payment-service";
+import {
+  assertStripePaymentIntentShape,
+  assertStripeSessionShape,
+  normalizeStripeCurrency,
+  retrieveStripeCheckoutSession,
+  retrieveStripePaymentIntent,
+  StripeVerificationError,
+  toStripeMinorUnits,
+} from "@/lib/payments/providers/stripe";
+
+async function handleStripeCallback(request: Request) {
+  try {
+    const sessionId = new URL(request.url).searchParams.get("session_id");
+
+    if (!sessionId) {
+      throw new StripeVerificationError("Stripe Checkout Session ID is missing.");
+    }
+
+    // The query parameter is only an opaque lookup key. All payment facts come
+    // from Stripe's authenticated API response and our own database records.
+    const session = await retrieveStripeCheckoutSession(sessionId);
+    const verified = assertStripeSessionShape(session);
+    const paymentIntent = await retrieveStripePaymentIntent(verified.paymentIntentId);
+    const verifiedIntent = assertStripePaymentIntentShape(paymentIntent, verified);
+    const payment = await prisma.paymentTransaction.findUnique({
+      where: { transactionId: verified.sessionId },
+      include: { order: true },
+    });
+
+    if (!payment) {
+      throw new StripeVerificationError("Stripe transaction was not initiated by this store.");
+    }
+    if (
+      payment.provider !== PaymentProvider.STRIPE ||
+      payment.order.paymentProvider !== PaymentProvider.STRIPE
+    ) {
+      throw new StripeVerificationError("Payment provider mismatch.");
+    }
+    if (payment.orderId !== verified.orderId || payment.order.id !== verified.orderId) {
+      throw new StripeVerificationError("Order ID mismatch.");
+    }
+
+    const paymentCurrency = normalizeStripeCurrency(payment.currency);
+    const orderCurrency = normalizeStripeCurrency(payment.order.currency);
+    const transactionAmount = toStripeMinorUnits(payment.amount, paymentCurrency);
+    const orderAmount = toStripeMinorUnits(payment.order.grandTotal, orderCurrency);
+
+    if (
+      transactionAmount !== orderAmount ||
+      verified.amountTotal !== transactionAmount ||
+      verifiedIntent.amountReceived !== transactionAmount
+    ) {
+      throw new StripeVerificationError("Payment amount mismatch.");
+    }
+    if (
+      paymentCurrency !== verified.currency ||
+      orderCurrency !== verified.currency ||
+      verifiedIntent.currency !== verified.currency
+    ) {
+      throw new StripeVerificationError("Payment currency mismatch.");
+    }
+
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_SITE_URL}/checkout/success?orderNumber=${payment.order.orderNumber}`,
+    );
+  } catch {
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_SITE_URL}/checkout?error=payment_verification_failed`,
+    );
+  }
+}
 
 export async function POST(
   request: Request,
@@ -9,6 +80,11 @@ export async function POST(
 ) {
   try {
     const { provider: rawProvider } = await params;
+
+    if (rawProvider.toLowerCase() === "stripe") {
+      return handleStripeCallback(request);
+    }
+
     const providerEnum = rawProvider.toUpperCase() as PaymentProvider;
 
     const contentType = request.headers.get("content-type") || "";

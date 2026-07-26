@@ -498,6 +498,7 @@ model PaymentTransaction {
   transactionId     String?           @unique @map("transaction_id")
   providerReference String?           @map("provider_reference")
   idempotencyKey    String?           @unique @map("idempotency_key")
+  attemptNumber     Int               @default(0) @map("attempt_number")
   failureReason     String?           @map("failure_reason") @db.Text
   rawMetadataJson   String?           @map("raw_metadata_json") @db.Text
   initiatedAt       DateTime          @default(now()) @map("initiated_at")
@@ -507,11 +508,27 @@ model PaymentTransaction {
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order           Order                   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  processedEvents ProcessedPaymentEvent[]
 
   @@index([orderId, createdAt])
   @@index([provider, status])
   @@map("payment_transactions")
+}
+
+model ProcessedPaymentEvent {
+  id                   String          @id @default(uuid()) @db.Uuid
+  provider             PaymentProvider
+  eventId              String          @map("event_id")
+  paymentTransactionId String          @map("payment_transaction_id") @db.Uuid
+  eventType            String          @map("event_type")
+  processedAt          DateTime        @default(now()) @map("processed_at")
+
+  paymentTransaction PaymentTransaction @relation(fields: [paymentTransactionId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, eventId])
+  @@index([paymentTransactionId, processedAt])
+  @@map("processed_payment_events")
 }
 
 model Coupon {
