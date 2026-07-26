@@ -18,6 +18,9 @@ export const checkoutFormSchema = z.object({
   shippingPostalCode: z.string().optional().nullable(),
   paymentMethod: z.string().min(1, "Payment method is required"),
   customerNote: z.string().max(1000, "Note is too long").optional().nullable(),
+  couponCode: z.string().optional().nullable(),
+  manualPaymentChannel: z.string().optional().nullable(),
+  manualTransactionRef: z.string().optional().nullable(),
   items: z.array(checkoutItemSchema).min(1, "Your cart is empty"),
 });
 

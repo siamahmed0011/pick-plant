@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
@@ -54,6 +55,19 @@ type StatusHistoryItem = {
   createdAt: Date | string;
 };
 
+type PaymentTransactionItem = {
+  id: string;
+  provider: string;
+  method: string | null;
+  status: string;
+  amount: number;
+  currency: string;
+  transactionId: string | null;
+  providerReference: string | null;
+  failureReason: string | null;
+  createdAt: Date | string;
+};
+
 type AdminOrderDetails = {
   id: string;
   orderNumber: string;
@@ -73,10 +87,17 @@ type AdminOrderDetails = {
   adminNotes: string | null;
   subtotal: number;
   shippingTotal: number;
+  discountTotal: number;
+  couponCode?: string | null;
+  couponDiscountTotal?: number;
+  shippingZoneName?: string | null;
+  shippingMethodName?: string | null;
+  estimatedDeliveryText?: string | null;
   grandTotal: number;
   createdAt: Date | string;
   items: OrderItem[];
   statusHistory: StatusHistoryItem[];
+  paymentTransactions?: PaymentTransactionItem[];
   user?: {
     id: string;
     name: string | null;
@@ -412,6 +433,105 @@ export function AdminOrderDetailView({ order }: { order: AdminOrderDetails }) {
         </Card>
       </div>
 
+      {/* Payment Transactions & Verification Section */}
+      <Card className="p-6">
+        <h2 className="font-bold text-base text-[var(--primary)] flex items-center justify-between border-b pb-3 mb-4">
+          <span className="flex items-center gap-2">
+            <CreditCard size={18} /> Payment Transactions & Gateway Verification
+          </span>
+        </h2>
+
+        {(!order.paymentTransactions || order.paymentTransactions.length === 0) ? (
+          <p className="text-xs text-stone-500 py-2">No payment transactions recorded for this order.</p>
+        ) : (
+          <div className="space-y-4">
+            {order.paymentTransactions.map((tx) => (
+              <div key={tx.id} className="rounded-xl border border-stone-200 p-4 space-y-2 bg-stone-50/50">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="font-bold text-sm text-stone-900">{tx.provider}</span>
+                    {tx.method && <span className="ml-2 text-xs text-stone-500">({tx.method})</span>}
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                    tx.status === "VERIFIED" || tx.status === "SUCCESS"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : tx.status === "FAILED"
+                      ? "bg-red-100 text-red-800"
+                      : tx.status === "REFUNDED"
+                      ? "bg-purple-100 text-purple-800"
+                      : "bg-amber-100 text-amber-800"
+                  }`}>
+                    {tx.status}
+                  </span>
+                </div>
+
+                <div className="text-xs space-y-1 text-stone-600">
+                  <p>Amount: <span className="font-semibold text-stone-900">৳ {tx.amount} {tx.currency}</span></p>
+                  {tx.providerReference && <p>Reference / TxnID: <span className="font-mono font-semibold">{tx.providerReference}</span></p>}
+                  {tx.failureReason && <p className="text-red-600 font-medium">Failure Reason: {tx.failureReason}</p>}
+                </div>
+
+                {/* Verification Actions */}
+                {tx.provider === "MANUAL" && tx.status === "PENDING" && (
+                  <div className="flex items-center gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={async () => {
+                        const res = await fetch("/api/admin/payments", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ action: "verify_manual", transactionId: tx.id }),
+                        });
+                        if (res.ok) window.location.reload();
+                      }}
+                    >
+                      Verify Manual Payment
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={async () => {
+                        const reason = prompt("Enter reason for rejection:");
+                        if (!reason) return;
+                        const res = await fetch("/api/admin/payments", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ action: "reject_manual", transactionId: tx.id, reason }),
+                        });
+                        if (res.ok) window.location.reload();
+                      }}
+                    >
+                      Reject Payment
+                    </Button>
+                  </div>
+                )}
+
+                {tx.provider === "CASH_ON_DELIVERY" && order.paymentStatus === "PENDING" && (
+                  <div className="pt-2">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={async () => {
+                        const res = await fetch("/api/admin/payments", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ action: "mark_cod_paid", orderId: order.id }),
+                        });
+                        if (res.ok) window.location.reload();
+                      }}
+                    >
+                      Mark COD as Collected (PAID)
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {/* Admin Notes Section */}
       <Card className="p-6">
         <h2 className="font-bold text-base text-[var(--primary)] flex items-center gap-2 border-b pb-3 mb-4">
@@ -452,11 +572,14 @@ export function AdminOrderDetailView({ order }: { order: AdminOrderDetails }) {
         <div className="divide-y">
           {order.items.map((item) => (
             <div key={item.id} className="py-3 flex items-center gap-4">
-              <img
-                src={item.productImageUrl || "/images/placeholders/plant.svg"}
-                alt={item.productName}
-                className="size-14 rounded-lg object-cover bg-[var(--muted-surface)]"
-              />
+              <div className="relative size-14 shrink-0 rounded-lg overflow-hidden bg-[var(--muted-surface)]">
+                <Image
+                  src={item.productImageUrl || "/images/placeholders/plant.svg"}
+                  alt={item.productName}
+                  fill
+                  className="object-cover"
+                />
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm">{item.productName}</p>
                 <p className="text-xs text-[var(--muted)]">SKU: {item.sku}</p>

@@ -24,6 +24,10 @@ export type OrderActor = {
   role: "CUSTOMER" | "ADMIN";
 };
 
+import { validateAndCalculateCoupon, redeemCouponInTransaction } from "@/lib/coupons/coupon-service";
+import { calculateShippingCost } from "@/lib/shipping/shipping-service";
+import { PaymentProvider, TransactionStatus } from "@/generated/prisma/enums";
+
 export async function createOrder(input: CheckoutInput, userId?: string) {
   const validated = checkoutFormSchema.parse(input);
 
@@ -34,6 +38,7 @@ export async function createOrder(input: CheckoutInput, userId?: string) {
       const products = await tx.product.findMany({
         where: { id: { in: productIds } },
         include: {
+          category: { select: { id: true, name: true } },
           images: {
             orderBy: { position: "asc" },
             take: 1,
@@ -66,6 +71,13 @@ export async function createOrder(input: CheckoutInput, userId?: string) {
         quantityDeducted: number;
         previousStock: number;
         newStock: number;
+      }> = [];
+
+      const cartItemsForCoupon: Array<{
+        productId: string;
+        categoryId?: string;
+        price: number;
+        quantity: number;
       }> = [];
 
       for (const item of validated.items) {
@@ -106,15 +118,50 @@ export async function createOrder(input: CheckoutInput, userId?: string) {
           previousStock: product.stockQuantity,
           newStock: product.stockQuantity - item.quantity,
         });
+
+        cartItemsForCoupon.push({
+          productId: product.id,
+          categoryId: product.categoryId,
+          price: Number(price),
+          quantity: item.quantity,
+        });
       }
 
-      // Calculate standard shipping & totals
-      const shippingTotal = new Prisma.Decimal(60); // Flat shipping fee of BDT 60
-      const discountTotal = new Prisma.Decimal(0);
-      const taxTotal = new Prisma.Decimal(0);
-      const grandTotal = subtotal.add(shippingTotal).add(taxTotal).sub(discountTotal);
+      // 3. Calculate dynamic shipping cost from shipping zone
+      const shippingCalc = await calculateShippingCost(
+        validated.shippingDistrict || "Dhaka",
+        Number(subtotal)
+      );
+      const shippingTotal = new Prisma.Decimal(shippingCalc.shippingCost);
 
-      // Generate order number
+      // 4. Validate & calculate coupon discount if provided
+      let appliedCouponId: string | null = null;
+      let couponCode: string | null = null;
+      let couponDiscountTotal = new Prisma.Decimal(0);
+
+      if (validated.couponCode && validated.couponCode.trim()) {
+        const couponResult = await validateAndCalculateCoupon(
+          validated.couponCode,
+          Number(subtotal),
+          shippingCalc.shippingCost,
+          cartItemsForCoupon,
+          userId,
+          validated.customerEmail
+        );
+
+        appliedCouponId = couponResult.couponId;
+        couponCode = couponResult.code;
+        couponDiscountTotal = new Prisma.Decimal(couponResult.discountAmount);
+      }
+
+      const discountTotal = couponDiscountTotal;
+      const taxTotal = new Prisma.Decimal(0);
+      const grandTotal = Prisma.Decimal.max(
+        new Prisma.Decimal(0),
+        subtotal.add(shippingTotal).add(taxTotal).sub(discountTotal)
+      );
+
+      // 5. Generate order number
       let orderNumber = generateOrderNumber();
       let attempts = 0;
       while (attempts < 5) {
@@ -124,14 +171,27 @@ export async function createOrder(input: CheckoutInput, userId?: string) {
         attempts++;
       }
 
-      // Create Order
+      // Determine payment provider enum
+      let provider: PaymentProvider = PaymentProvider.CASH_ON_DELIVERY;
+      const pmUpper = (validated.paymentMethod || "").toUpperCase();
+      if (pmUpper.includes("MANUAL") || pmUpper.includes("BKASH") || pmUpper.includes("NAGAD") || pmUpper.includes("BANK")) {
+        provider = PaymentProvider.MANUAL;
+      } else if (pmUpper.includes("SSLCOMMERZ")) {
+        provider = PaymentProvider.SSLCOMMERZ;
+      } else if (pmUpper.includes("STRIPE")) {
+        provider = PaymentProvider.STRIPE;
+      }
+
+      // 6. Create Order
       const order = await tx.order.create({
         data: {
           orderNumber,
           userId: userId || null,
           status: OrderStatus.PENDING,
           paymentStatus: PaymentStatus.PENDING,
-          paymentMethod: validated.paymentMethod,
+          paymentProvider: provider,
+          paymentMethod: validated.manualPaymentChannel || validated.paymentMethod,
+          paymentReference: validated.manualTransactionRef || null,
           customerName: validated.customerName,
           customerEmail: validated.customerEmail,
           customerPhone: validated.customerPhone,
@@ -147,6 +207,13 @@ export async function createOrder(input: CheckoutInput, userId?: string) {
           discountTotal,
           taxTotal,
           grandTotal,
+          couponCode,
+          couponDiscountTotal,
+          appliedCouponId,
+          shippingZoneName: shippingCalc.zoneName,
+          shippingMethodName: shippingCalc.rateName,
+          shippingCost: shippingTotal,
+          estimatedDeliveryText: shippingCalc.estimatedDeliveryText,
           placedAt: new Date(),
           items: {
             create: orderItemsData,
@@ -157,7 +224,38 @@ export async function createOrder(input: CheckoutInput, userId?: string) {
         },
       });
 
-      // Deduct product stock & Create InventoryMovement
+      // 7. Record coupon redemption inside transaction if coupon applied
+      if (appliedCouponId && couponCode) {
+        await redeemCouponInTransaction(
+          tx,
+          appliedCouponId,
+          order.id,
+          userId,
+          validated.customerEmail,
+          Number(couponDiscountTotal)
+        );
+      }
+
+      // 8. Create PaymentTransaction record
+      const initialTxStatus =
+        provider === PaymentProvider.CASH_ON_DELIVERY || provider === PaymentProvider.MANUAL
+          ? TransactionStatus.PENDING
+          : TransactionStatus.INITIATED;
+
+      await tx.paymentTransaction.create({
+        data: {
+          orderId: order.id,
+          provider,
+          method: validated.manualPaymentChannel || validated.paymentMethod,
+          status: initialTxStatus,
+          amount: grandTotal,
+          currency: "BDT",
+          transactionId: validated.manualTransactionRef || `${provider}-${order.orderNumber}`,
+          providerReference: validated.manualTransactionRef || null,
+        },
+      });
+
+      // 9. Deduct product stock & Create InventoryMovement
       for (const update of stockUpdates) {
         await tx.product.update({
           where: { id: update.productId },
@@ -183,7 +281,7 @@ export async function createOrder(input: CheckoutInput, userId?: string) {
         });
       }
 
-      // Initial OrderStatusHistory
+      // 10. Initial OrderStatusHistory
       await tx.orderStatusHistory.create({
         data: {
           orderId: order.id,

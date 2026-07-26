@@ -1,8 +1,11 @@
 import { Container } from "@/components/shared/container";
 import { ProductGrid } from "@/components/product/product-grid";
-import { products } from "@/data/products";
 import { SectionIntro } from "./section-intro";
-export function PopularPlants() {
+import type { Product } from "@/types";
+
+export function PopularPlants({ items = [] }: { items?: Product[] }) {
+  if (items.length === 0) return null;
+
   return (
     <section className="bg-white py-12 sm:py-16">
       <Container>
@@ -12,7 +15,7 @@ export function PopularPlants() {
           href="/plants"
           label="View All Plants"
         />
-        <ProductGrid items={products.slice(2, 6)} />
+        <ProductGrid items={items.slice(0, 4)} />
       </Container>
     </section>
   );

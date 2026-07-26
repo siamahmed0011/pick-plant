@@ -1,8 +1,11 @@
 import { CategoryGrid } from "@/components/category/category-grid";
 import { Container } from "@/components/shared/container";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
-import { categories } from "@/data/categories";
-export default function CategoriesPage() {
+import { getStorefrontCategories } from "@/lib/storefront/categories";
+
+export default async function CategoriesPage() {
+  const categories = await getStorefrontCategories();
+
   return (
     <main className="py-8 sm:py-12">
       <Container>

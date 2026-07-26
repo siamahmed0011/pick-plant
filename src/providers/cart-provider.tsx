@@ -34,18 +34,38 @@ const serverSnapshot: CartItem[] = [];
 let cachedRaw: string | null | undefined;
 let cachedItems: CartItem[] = serverSnapshot;
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidCartItem(item: unknown): item is CartItem {
+  if (!item || typeof item !== "object") return false;
+  const i = item as Record<string, unknown>;
+  return (
+    typeof i.id === "string" &&
+    typeof i.productId === "string" &&
+    UUID_REGEX.test(i.productId) &&
+    typeof i.name === "string" &&
+    typeof i.price === "number" &&
+    typeof i.quantity === "number"
+  );
+}
+
 function getSnapshot() {
   try {
     const raw = localStorage.getItem(key);
     if (raw === cachedRaw) return cachedItems;
     const stored: unknown = JSON.parse(raw ?? "[]");
     cachedRaw = raw;
-    cachedItems = Array.isArray(stored)
-      ? stored.filter(
-          (item): item is CartItem =>
-            Boolean(item) && typeof item === "object" && "id" in item && typeof item.id === "string"
-        )
-      : [];
+
+    if (Array.isArray(stored)) {
+      const valid = stored.filter(isValidCartItem);
+      // Auto-cleanup legacy items like plant-7 if present in localStorage
+      if (valid.length !== stored.length) {
+        localStorage.setItem(key, JSON.stringify(valid));
+      }
+      cachedItems = valid;
+    } else {
+      cachedItems = [];
+    }
     return cachedItems;
   } catch {
     cachedRaw = null;

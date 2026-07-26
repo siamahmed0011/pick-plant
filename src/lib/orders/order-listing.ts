@@ -119,6 +119,9 @@ export async function getAdminOrderDetails(orderId: string) {
       user: {
         select: { id: true, name: true, email: true, phone: true },
       },
+      paymentTransactions: {
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
@@ -131,10 +134,16 @@ export async function getAdminOrderDetails(orderId: string) {
     discountTotal: Number(order.discountTotal),
     taxTotal: Number(order.taxTotal),
     grandTotal: Number(order.grandTotal),
+    couponDiscountTotal: Number(order.couponDiscountTotal),
+    shippingCost: Number(order.shippingCost),
     items: order.items.map((i) => ({
       ...i,
       unitPrice: Number(i.unitPrice),
       lineTotal: Number(i.lineTotal),
+    })),
+    paymentTransactions: order.paymentTransactions.map((pt) => ({
+      ...pt,
+      amount: Number(pt.amount),
     })),
   };
 }
@@ -204,6 +213,8 @@ export async function getCustomerOrderDetails(userId: string, orderIdOrNumber: s
     subtotal: Number(order.subtotal),
     shippingTotal: Number(order.shippingTotal),
     discountTotal: Number(order.discountTotal),
+    couponDiscountTotal: Number(order.couponDiscountTotal),
+    shippingCost: Number(order.shippingCost),
     taxTotal: Number(order.taxTotal),
     grandTotal: Number(order.grandTotal),
     items: order.items.map((i) => ({

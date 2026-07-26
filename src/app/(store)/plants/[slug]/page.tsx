@@ -13,11 +13,11 @@ import { ProductGrid } from "@/components/product/product-grid";
 import { Container } from "@/components/shared/container";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { Badge } from "@/components/ui/badge";
-import { products as staticProducts } from "@/data/products";
 import { getStorefrontProducts } from "@/lib/storefront/products";
 type Props = { params: Promise<{ slug: string }> };
-export function generateStaticParams() {
-  return staticProducts.map((product) => ({ slug: product.slug }));
+export async function generateStaticParams() {
+  const products = await getStorefrontProducts();
+  return products.map((product) => ({ slug: product.slug }));
 }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -148,7 +148,7 @@ export default async function PlantDetailsPage({ params }: Props) {
         </section>
         <section className="mt-14">
           <h2 className="text-3xl font-bold">Recently Viewed</h2>
-          <p className="mt-2 text-[var(--muted)]">আপনার জন্য ছোট একটি mock selection।</p>
+          <p className="mt-2 text-[var(--muted)]">সাম্প্রতিক দেখা এবং আপনার পছন্দের উপযোগী অন্যান্য গাছসমূহ।</p>
           <div className="mt-6">
             <ProductGrid items={recent} />
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { cancelCustomerOrderAction } from "@/app/account/orders/actions";
@@ -48,6 +49,11 @@ type CustomerOrderDetails = {
   customerNote: string | null;
   subtotal: number;
   shippingTotal: number;
+  couponCode?: string | null;
+  couponDiscountTotal?: number;
+  shippingZoneName?: string | null;
+  shippingMethodName?: string | null;
+  estimatedDeliveryText?: string | null;
   grandTotal: number;
   createdAt: Date | string;
   items: OrderItem[];
@@ -162,11 +168,14 @@ export function CustomerOrderDetailsView({ order }: { order: CustomerOrderDetail
         <div className="divide-y">
           {order.items.map((item) => (
             <div key={item.id} className="py-4 flex items-center gap-4">
-              <img
-                src={item.productImageUrl || "/images/placeholders/plant.svg"}
-                alt={item.productName}
-                className="size-16 rounded-xl object-cover bg-[var(--muted-surface)]"
-              />
+              <div className="relative size-16 shrink-0 rounded-xl overflow-hidden bg-[var(--muted-surface)]">
+                <Image
+                  src={item.productImageUrl || "/images/placeholders/plant.svg"}
+                  alt={item.productName}
+                  fill
+                  className="object-cover"
+                />
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm">{item.productName}</p>
                 <p className="text-xs text-[var(--muted)]">SKU: {item.sku}</p>
@@ -186,8 +195,23 @@ export function CustomerOrderDetailsView({ order }: { order: CustomerOrderDetail
             <span>Subtotal</span>
             <span className="font-semibold text-black">{formatCurrency(order.subtotal)}</span>
           </div>
+
+          {order.couponCode && (order.couponDiscountTotal || 0) > 0 && (
+            <div className="flex justify-between text-emerald-700 font-medium">
+              <span>Coupon Discount ({order.couponCode})</span>
+              <span>-{formatCurrency(order.couponDiscountTotal || 0)}</span>
+            </div>
+          )}
+
           <div className="flex justify-between text-[var(--muted)]">
-            <span>Shipping</span>
+            <div>
+              <span>Shipping</span>
+              {order.shippingZoneName && (
+                <span className="block text-[10px] text-stone-400">
+                  {order.shippingZoneName} {order.estimatedDeliveryText ? `(${order.estimatedDeliveryText})` : ""}
+                </span>
+              )}
+            </div>
             <span className="font-semibold text-black">{formatCurrency(order.shippingTotal)}</span>
           </div>
           <div className="flex justify-between text-base font-bold border-t pt-2 text-[var(--primary)]">

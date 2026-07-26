@@ -1,9 +1,5 @@
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { redirect } from "next/navigation";
+
 export default function Page() {
-  return (
-    <AdminPageHeader
-      title="Plant Details"
-      description="নির্বাচিত plant record-এর তথ্য এখানে থাকবে।"
-    />
-  );
+  redirect("/admin/products");
 }

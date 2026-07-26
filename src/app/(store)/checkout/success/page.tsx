@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -55,11 +56,14 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
           <ul className="divide-y my-3">
             {order.items.map((item) => (
               <li key={item.id} className="flex gap-4 py-3 items-center">
-                <img
-                  src={item.productImageUrl || "/images/placeholders/plant.svg"}
-                  alt={item.productName}
-                  className="size-14 rounded-lg object-cover bg-[var(--muted-surface)]"
-                />
+                <div className="relative size-14 shrink-0 rounded-lg overflow-hidden bg-[var(--muted-surface)]">
+                  <Image
+                    src={item.productImageUrl || "/images/placeholders/plant.svg"}
+                    alt={item.productName}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-sm truncate">{item.productName}</p>
                   <p className="text-xs text-[var(--muted)]">SKU: {item.sku}</p>

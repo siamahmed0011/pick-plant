@@ -1,9 +1,5 @@
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { redirect } from "next/navigation";
+
 export default function Page() {
-  return (
-    <AdminPageHeader
-      title="Add New Plant"
-      description="নতুন গাছ যোগ করার placeholder form এখানে থাকবে।"
-    />
-  );
+  redirect("/admin/products/new");
 }

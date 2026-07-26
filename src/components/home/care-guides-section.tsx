@@ -20,7 +20,7 @@ export function CareGuidesSection() {
             <article className="surface group overflow-hidden" key={post.id}>
               <div className="relative aspect-[16/10] bg-[var(--secondary)]/25">
                 <Image
-                  src={post.image}
+                  src={post.coverImage || "/images/placeholders/blog.svg"}
                   alt={`${post.title} guide`}
                   fill
                   className="object-cover transition group-hover:scale-105"

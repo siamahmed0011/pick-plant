@@ -3,7 +3,11 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import type { Category } from "@/types";
 
-export function CategoryCard({ category, count }: { category: Category; count?: number }) {
+export type CategoryWithCount = Category & { productCount?: number };
+
+export function CategoryCard({ category, count }: { category: CategoryWithCount; count?: number }) {
+  const displayCount = count !== undefined ? count : category.productCount;
+
   return (
     <Link
       href={`/categories/${category.slug}`}
@@ -22,9 +26,9 @@ export function CategoryCard({ category, count }: { category: Category; count?: 
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-lg font-bold">{category.name}</h3>
-            {count !== undefined && (
+            {displayCount !== undefined && (
               <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[var(--primary)]">
-                {count} products
+                {displayCount} {displayCount === 1 ? "product" : "products"}
               </p>
             )}
           </div>

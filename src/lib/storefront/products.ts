@@ -1,7 +1,6 @@
 import "server-only";
 
 import { cache } from "react";
-import { products as staticProducts } from "@/data/products";
 import { productCardImageUrl, productDetailImageUrl } from "@/lib/cloudinary-image";
 import { prisma } from "@/lib/prisma";
 import type { Product } from "@/types";
@@ -55,7 +54,7 @@ export const getStorefrontProducts = cache(async (): Promise<Product[]> => {
       },
     });
 
-    const databaseProducts: Product[] = records.map((product) => {
+    return records.map((product) => {
       const currentPrice = Number(product.price);
       const regularPrice = product.compareAtPrice
         ? Number(product.compareAtPrice)
@@ -100,29 +99,8 @@ export const getStorefrontProducts = cache(async (): Promise<Product[]> => {
         plantSize: product.plantSize ?? undefined,
       };
     });
-
-    const databaseSlugs = new Set(databaseProducts.map((product) => product.slug));
-    return [
-      ...databaseProducts,
-      ...staticProducts.filter((product) => !databaseSlugs.has(product.slug)),
-    ];
   } catch (error) {
-    const code =
-      typeof error === "object" && error !== null && "code" in error
-        ? String(error.code)
-        : undefined;
-    const errorDetails = {
-      name: error instanceof Error ? error.name : "UnknownError",
-      code,
-    };
-
-    // Next.js opens its development error overlay for console.error calls,
-    // even though this failure is handled by the static-product fallback.
-    if (process.env.NODE_ENV === "development") {
-      console.warn("Storefront products could not be loaded from the database.", errorDetails);
-    } else {
-      console.error("Storefront products could not be loaded from the database.", errorDetails);
-    }
-    return staticProducts;
+    console.error("Storefront products could not be loaded from database:", error);
+    return [];
   }
 });

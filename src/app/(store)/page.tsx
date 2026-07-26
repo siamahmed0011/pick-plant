@@ -11,16 +11,24 @@ import { ServicesSection } from "@/components/home/services-section";
 import { CareGuidesSection } from "@/components/home/care-guides-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
 import { NewsletterSection } from "@/components/home/newsletter-section";
-export default function HomePage() {
+import { getStorefrontProducts } from "@/lib/storefront/products";
+
+export default async function HomePage() {
+  const products = await getStorefrontProducts();
+
+  const recommended = products.filter((p) => p.featured).slice(0, 4);
+  const popular = products.slice(0, 4);
+  const seasonal = products.slice(4, 8);
+
   return (
     <main>
       <HeroSection />
       <FeaturedCategories />
-      <RecommendedPlants />
+      <RecommendedPlants items={recommended.length > 0 ? recommended : products.slice(0, 4)} />
       <ComboOffers />
       <PlantFinderBanner />
-      <PopularPlants />
-      <SeasonalPlants />
+      <PopularPlants items={popular.length > 0 ? popular : products.slice(0, 4)} />
+      <SeasonalPlants items={seasonal.length > 0 ? seasonal : products.slice(0, 4)} />
       <AccessoriesSection />
       <BenefitsSection />
       <ServicesSection />

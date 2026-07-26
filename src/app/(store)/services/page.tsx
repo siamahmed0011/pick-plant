@@ -1,9 +1,11 @@
-import { PlaceholderPage } from "@/components/shared/placeholder-page";
-export default function Page() {
-  return (
-    <PlaceholderPage
-      title="Services"
-      description="গাছ বাছাই, বাগান সাজানো ও পরিচর্যার সেবাগুলো দেখুন।"
-    />
-  );
+import type { Metadata } from "next";
+import { ServicesView } from "@/components/services/services-view";
+
+export const metadata: Metadata = {
+  title: "Gardening & Plant Care Services | Pick Plant",
+  description: "Professional plant services in Bangladesh including plant health consultation, indoor setup, balcony garden design, repotting, and monthly corporate maintenance.",
+};
+
+export default function ServicesPage() {
+  return <ServicesView />;
 }

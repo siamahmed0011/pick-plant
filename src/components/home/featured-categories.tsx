@@ -1,8 +1,13 @@
 import { Container } from "@/components/shared/container";
 import { CategoryGrid } from "@/components/category/category-grid";
-import { categories } from "@/data/categories";
+import { getStorefrontCategories } from "@/lib/storefront/categories";
 import { SectionIntro } from "./section-intro";
-export function FeaturedCategories() {
+
+export async function FeaturedCategories() {
+  const categories = await getStorefrontCategories();
+
+  if (categories.length === 0) return null;
+
   return (
     <section className="py-12 sm:py-16">
       <Container>
@@ -12,7 +17,7 @@ export function FeaturedCategories() {
           href="/categories"
           label="View All Categories"
         />
-        <CategoryGrid items={categories} />
+        <CategoryGrid items={categories.slice(0, 5)} />
       </Container>
     </section>
   );

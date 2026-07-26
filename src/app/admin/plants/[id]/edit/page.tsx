@@ -1,9 +1,5 @@
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { redirect } from "next/navigation";
+
 export default function Page() {
-  return (
-    <AdminPageHeader
-      title="Edit Plant"
-      description="Plant তথ্য সম্পাদনার placeholder form এখানে থাকবে।"
-    />
-  );
+  redirect("/admin/products");
 }

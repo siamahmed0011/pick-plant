@@ -1,6 +1,5 @@
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { redirect } from "next/navigation";
+
 export default function Page() {
-  return (
-    <AdminPageHeader title="Plants" description="Plant catalog management interface এখানে থাকবে।" />
-  );
+  redirect("/admin/products");
 }

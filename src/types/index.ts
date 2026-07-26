@@ -54,8 +54,11 @@ export interface BlogPost {
   title: string;
   slug: string;
   excerpt: string;
-  image: string;
-  publishedAt: string;
+  coverImage?: string | null;
+  category: string;
+  authorName: string;
+  readingTime: string;
+  publishedAt: string | Date;
 }
 export interface Service {
   id: string;

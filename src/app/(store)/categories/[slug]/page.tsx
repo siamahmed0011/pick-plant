@@ -4,19 +4,26 @@ import { ProductGrid } from "@/components/product/product-grid";
 import { Container } from "@/components/shared/container";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { EmptyState } from "@/components/shared/empty-state";
-import { categories } from "@/data/categories";
+import { getStorefrontCategories } from "@/lib/storefront/categories";
 import { getStorefrontProducts } from "@/lib/storefront/products";
-export function generateStaticParams() {
+
+export async function generateStaticParams() {
+  const categories = await getStorefrontCategories();
   return categories.map((category) => ({ slug: category.slug }));
 }
+
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const products = await getStorefrontProducts();
-  const category =
-    products.find((product) => product.category.slug === slug)?.category ??
-    categories.find((item) => item.slug === slug);
+  const [categories, products] = await Promise.all([
+    getStorefrontCategories(),
+    getStorefrontProducts(),
+  ]);
+
+  const category = categories.find((item) => item.slug === slug);
   if (!category) notFound();
+
   const categoryProducts = products.filter((product) => product.category.slug === category.slug);
+
   return (
     <main className="py-8 sm:py-12">
       <Container>
@@ -38,7 +45,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
                 {category.description}
               </p>
               <p className="mt-5 text-sm font-semibold">
-                {categoryProducts.length} products available
+                {category.productCount} {category.productCount === 1 ? "product" : "products"} available
               </p>
             </div>
             <div className="relative min-h-56 bg-[var(--secondary)]/40">

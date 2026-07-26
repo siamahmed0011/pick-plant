@@ -1,9 +1,11 @@
-import { PlaceholderPage } from "@/components/shared/placeholder-page";
-export default function Page() {
-  return (
-    <PlaceholderPage
-      title="Contact Us"
-      description="প্রশ্ন, পরামর্শ বা সেবা সম্পর্কে জানতে আমাদের সঙ্গে যোগাযোগ করুন।"
-    />
-  );
+import type { Metadata } from "next";
+import { ContactFormView } from "@/components/contact/contact-form";
+
+export const metadata: Metadata = {
+  title: "Contact Us | Pick Plant Support & Inquiries",
+  description: "Get in touch with Pick Plant team for plant care support, gardening service inquiries, order assistance, or custom corporate plant setups in Bangladesh.",
+};
+
+export default function ContactPage() {
+  return <ContactFormView />;
 }

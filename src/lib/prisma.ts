@@ -4,7 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
-  prismaPhase80: PrismaClient | undefined;
+  prismaPhase83: PrismaClient | undefined;
 };
 
 function createPrismaClient() {
@@ -19,7 +19,7 @@ function createPrismaClient() {
 }
 
 // Keep the development singleton schema-versioned so Turbopack HMR cannot
-// reuse a client generated before the Phase 8.0 inventory fields existed.
-export const prisma = globalForPrisma.prismaPhase80 ?? createPrismaClient();
+// reuse a client generated before the Phase 8.3 blog/contact models existed.
+export const prisma = globalForPrisma.prismaPhase83 ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prismaPhase80 = prisma;
+if (process.env.NODE_ENV !== "production") globalForPrisma.prismaPhase83 = prisma;

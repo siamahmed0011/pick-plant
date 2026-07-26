@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { Badge } from "@/components/ui/badge";
@@ -101,11 +102,14 @@ export function CustomerOrdersList({ orders }: { orders: CustomerOrderListItem[]
             <div className="flex items-center gap-3 overflow-x-auto py-1">
               {order.items.slice(0, 3).map((item) => (
                 <div key={item.id} className="flex items-center gap-2 shrink-0">
-                  <img
-                    src={item.productImageUrl || "/images/placeholders/plant.svg"}
-                    alt={item.productName}
-                    className="size-12 rounded-lg object-cover bg-[var(--muted-surface)]"
-                  />
+                  <div className="relative size-12 shrink-0 rounded-lg overflow-hidden bg-[var(--muted-surface)]">
+                    <Image
+                      src={item.productImageUrl || "/images/placeholders/plant.svg"}
+                      alt={item.productName}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
                   <div className="hidden md:block min-w-0">
                     <p className="text-xs font-bold truncate max-w-[140px]">{item.productName}</p>
                     <p className="text-xs text-[var(--muted)]">Qty: {item.quantity}</p>
