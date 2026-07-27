@@ -6,6 +6,10 @@ import { hashPassword } from "@/lib/auth/password";
 import { getSafeCallbackUrl } from "@/lib/auth/callback";
 import { formDataToRecord, loginSchema, registrationSchema } from "@/lib/auth/validation";
 import { prisma } from "@/lib/prisma";
+import {
+  createEmailVerificationToken,
+  consumeEmailVerificationToken,
+} from "@/lib/auth/email-verification";
 
 export type AuthFailureResult = { ok: false; message: string; fieldErrors?: string[] };
 export type AuthActionResult =
@@ -98,31 +102,166 @@ export async function registrationAction(formData: FormData): Promise<AuthAction
   }
 }
 
-export async function forgotPasswordAction(formData: FormData): Promise<AuthFailureResult> {
-  void formData;
-  return {
-    ok: false,
-    message:
-      "Secure password recovery will activate when database-backed accounts and email delivery are connected.",
-  };
+import { createPasswordResetToken, consumePasswordResetToken } from "@/lib/auth/password-reset";
+
+export async function forgotPasswordAction(formData: FormData): Promise<AuthActionResult> {
+  const emailRaw = String(formData.get("email") ?? "").trim();
+  const parsedEmail = loginSchema.shape.email.safeParse(emailRaw);
+
+  if (!parsedEmail.success) {
+    return {
+      ok: false,
+      message: "Enter a valid email address.",
+    };
+  }
+
+  const safeSuccessMessage =
+    "If an account with that email address exists, instructions to reset your password have been generated.";
+
+  try {
+    const result = await createPasswordResetToken(parsedEmail.data);
+
+    if (process.env.NODE_ENV === "development" && result.created && result.rawToken) {
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+      console.info(
+        `[DEV ONLY] Password reset URL generated for ${result.email}: ${baseUrl}/reset-password?token=${result.rawToken}`,
+      );
+    }
+
+    return {
+      ok: true,
+      message: safeSuccessMessage,
+    };
+  } catch (error) {
+    console.error("Forgot password processing failed:", error);
+    return {
+      ok: true,
+      message: safeSuccessMessage,
+    };
+  }
 }
 
-export async function resetPasswordAction(formData: FormData): Promise<AuthFailureResult> {
-  void formData;
-  return {
-    ok: false,
-    message:
-      "This reset request cannot be processed until secure token validation and account storage are available.",
-  };
+export async function resetPasswordAction(formData: FormData): Promise<AuthActionResult> {
+  const rawToken = String(formData.get("token") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  if (!rawToken) {
+    return {
+      ok: false,
+      message: "Password reset token is missing.",
+    };
+  }
+
+  if (password !== confirmPassword) {
+    return {
+      ok: false,
+      message: "New passwords must match.",
+    };
+  }
+
+  const parsedPassword = loginSchema.shape.password.safeParse(password);
+  if (!parsedPassword.success) {
+    return {
+      ok: false,
+      message: parsedPassword.error.issues[0]?.message ?? "Invalid new password.",
+    };
+  }
+
+  try {
+    const consumed = await consumePasswordResetToken(rawToken, parsedPassword.data);
+
+    if (!consumed.success) {
+      return {
+        ok: false,
+        message: consumed.error,
+      };
+    }
+
+    return {
+      ok: true,
+      message: consumed.message,
+    };
+  } catch (error) {
+    console.error("Reset password processing failed:", error);
+    return {
+      ok: false,
+      message: "An error occurred while resetting your password. Please try again.",
+    };
+  }
 }
 
-export async function resendVerificationAction(formData: FormData): Promise<AuthFailureResult> {
-  void formData;
-  return {
-    ok: false,
-    message:
-      "Verification email delivery will activate with secure account storage and email integration.",
-  };
+export async function resendVerificationAction(formData: FormData): Promise<AuthActionResult> {
+  const emailRaw = String(formData.get("email") ?? "").trim();
+  const parsedEmail = loginSchema.shape.email.safeParse(emailRaw);
+
+  if (!parsedEmail.success) {
+    return {
+      ok: false,
+      message: "Enter a valid email address.",
+    };
+  }
+
+  const safeMessage =
+    "If an account with that email address exists and requires verification, a new verification link has been generated.";
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: parsedEmail.data },
+      select: { id: true, email: true, emailVerified: true },
+    });
+
+    if (user && user.email && user.emailVerified === null) {
+      const verification = await createEmailVerificationToken(user.email);
+
+      if (process.env.NODE_ENV === "development" && verification.created && verification.rawToken) {
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+        console.info(
+          `[DEV ONLY] Email verification URL generated for ${user.email}: ${baseUrl}/verify-email?token=${verification.rawToken}`,
+        );
+      }
+    }
+
+    return {
+      ok: true,
+      message: safeMessage,
+    };
+  } catch (error) {
+    console.error("Resend verification processing failed:", error);
+    return {
+      ok: true,
+      message: safeMessage,
+    };
+  }
+}
+
+export async function verifyEmailAction(rawToken: string): Promise<AuthActionResult> {
+  if (!rawToken || !rawToken.trim()) {
+    return {
+      ok: false,
+      message: "Verification token is missing.",
+    };
+  }
+
+  try {
+    const consumed = await consumeEmailVerificationToken(rawToken);
+    if (!consumed.success) {
+      return {
+        ok: false,
+        message: consumed.error,
+      };
+    }
+    return {
+      ok: true,
+      message: consumed.message,
+    };
+  } catch (error) {
+    console.error("Email verification action failed:", error);
+    return {
+      ok: false,
+      message: "An error occurred while verifying your email. Please try again.",
+    };
+  }
 }
 
 export async function signOutAction() {

@@ -31,6 +31,11 @@ const authConfig = {
 
           if (!user?.isActive || !user.passwordHash) return null;
 
+          const allowUnverified = process.env.ALLOW_UNVERIFIED_LOGIN?.trim().toLowerCase() !== "false";
+          if (!allowUnverified && user.emailVerified === null) {
+            return null;
+          }
+
           const passwordMatches = await verifyPassword(parsed.data.password, user.passwordHash);
           if (!passwordMatches) return null;
 
@@ -40,6 +45,7 @@ const authConfig = {
             email: user.email,
             image: user.image,
             role: user.role as UserRole,
+            passwordChangedAt: user.passwordChangedAt ? user.passwordChangedAt.getTime() : 0,
           };
         } catch {
           return null;
@@ -48,16 +54,37 @@ const authConfig = {
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       if (user) {
         token.sub = user.id;
         token.role = (user.role as UserRole | undefined) ?? DEFAULT_USER_ROLE;
+        token.pwdChangedAt = (user as { passwordChangedAt?: number }).passwordChangedAt ?? 0;
+      } else if (token.sub) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.sub },
+            select: { passwordChangedAt: true, isActive: true },
+          });
+
+          if (!dbUser || !dbUser.isActive) {
+            return {};
+          }
+
+          const dbPwdChangedAt = dbUser.passwordChangedAt ? dbUser.passwordChangedAt.getTime() : 0;
+          const tokenPwdChangedAt = (token.pwdChangedAt as number | undefined) ?? 0;
+
+          if (dbPwdChangedAt > tokenPwdChangedAt) {
+            return {};
+          }
+        } catch {
+          // If DB is temporarily unavailable, retain current token
+        }
       }
       return token;
     },
     session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.sub ?? "";
+      if (session.user && token.sub) {
+        session.user.id = token.sub;
         session.user.role = (token.role as UserRole | undefined) ?? DEFAULT_USER_ROLE;
       }
       return session;

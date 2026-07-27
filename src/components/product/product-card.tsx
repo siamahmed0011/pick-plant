@@ -136,15 +136,17 @@ export function ProductCard({ product }: { product: Product }) {
               onClick={handleAddToCart}
               className="w-full"
               size="sm"
-              disabled={showAddedState}
+              disabled={showAddedState || product.stock <= 0}
               aria-label={
-                showAddedState
+                product.stock <= 0
+                  ? `${product.name} is out of stock`
+                  : showAddedState
                   ? `${product.name} added to cart`
                   : `Add ${product.name} to cart`
               }
             >
               <ShoppingBag size={16} />
-              {showAddedState ? "Added" : "Add to Cart"}
+              {product.stock <= 0 ? "Out of Stock" : showAddedState ? "Added" : "Add to Cart"}
             </Button>
             <button
               type="button"

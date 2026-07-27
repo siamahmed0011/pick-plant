@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
 type RecoveryMode = "forgot" | "reset";
-type DeferredResult = { ok: false; message: string };
+type DeferredResult = { ok: boolean; message: string };
 
 export function RecoveryForm({ mode, token }: { mode: RecoveryMode; token?: string }) {
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -64,17 +64,9 @@ export function RecoveryForm({ mode, token }: { mode: RecoveryMode; token?: stri
       </h1>
       <p className="mt-3 leading-7 text-[var(--muted)]">
         {isReset
-          ? "Enter a strong new password. Token validation and password updates remain inactive until secure backend integration."
-          : "Enter your email address. Recovery email delivery will activate with secure account and email storage."}
+          ? "Enter a strong new password to update your account access."
+          : "Enter your email address to request a secure password recovery link."}
       </p>
-      {isReset && (
-        <div className="mt-5">
-          <StatusNotice>
-            A token was supplied, but it is treated as untrusted and cannot be checked for validity
-            or expiry yet.
-          </StatusNotice>
-        </div>
-      )}
       <form className="mt-7 grid gap-5" onSubmit={handleSubmit} noValidate>
         {isReset ? (
           <>
@@ -88,8 +80,7 @@ export function RecoveryForm({ mode, token }: { mode: RecoveryMode; token?: stri
               describedBy="password-requirements"
             />
             <p id="password-requirements" className="-mt-3 text-sm text-[var(--muted)]">
-              Use at least 8 characters. Future server validation will enforce the final password
-              policy.
+              Must be at least 8 characters with at least one letter and one number.
             </p>
             <PasswordField
               id="confirm-new-password"
@@ -123,13 +114,17 @@ export function RecoveryForm({ mode, token }: { mode: RecoveryMode; token?: stri
             </ul>
           </StatusNotice>
         )}
-        {result && <StatusNotice>{result.message}</StatusNotice>}
+        {result && (
+          <StatusNotice variant={result.ok ? "info" : "error"} role={result.ok ? "status" : "alert"}>
+            {result.message}
+          </StatusNotice>
+        )}
         <Button type="submit" disabled={pending} className="w-full">
           {pending && <LoaderCircle className="animate-spin" size={18} />}
           {pending
-            ? "Checking availability…"
+            ? "Processing request…"
             : isReset
-              ? "Request password update"
+              ? "Update password"
               : "Request recovery link"}
         </Button>
       </form>
