@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Droplets, Eye, Heart, ShoppingBag, Star, Sun } from "lucide-react";
 import type { Product } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,76 @@ import { useCart } from "@/providers/cart-provider";
 import { useWishlist } from "@/providers/wishlist-provider";
 export function ProductCard({ product }: { product: Product }) {
   const [quickView, setQuickView] = useState(false);
-  const { addItem } = useCart();
+  const [addFeedback, setAddFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [showAddedState, setShowAddedState] = useState(false);
+  const addLockedRef = useRef(false);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { addItem, items } = useCart();
   const { toggle, has } = useWishlist();
   const discount = product.salePrice
     ? Math.round((1 - product.salePrice / product.regularPrice) * 100)
     : 0;
+
+  useEffect(
+    () => () => {
+      if (feedbackTimerRef.current) {
+        clearTimeout(feedbackTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const clearFeedbackTimer = () => {
+    if (feedbackTimerRef.current) {
+      clearTimeout(feedbackTimerRef.current);
+      feedbackTimerRef.current = null;
+    }
+  };
+
+  const handleAddToCart = () => {
+    if (addLockedRef.current) return;
+
+    addLockedRef.current = true;
+    clearFeedbackTimer();
+    const existingItem = items.find(
+      (item) =>
+        item.productId === product.id &&
+        item.selectedSize === "Medium" &&
+        item.selectedPot === "Nursery Pot",
+    );
+
+    try {
+      addItem(product);
+      setShowAddedState(true);
+      setAddFeedback({
+        type: "success",
+        message: existingItem
+          ? `Quantity increased for ${product.name}.`
+          : `${product.name} added to cart.`,
+      });
+      feedbackTimerRef.current = setTimeout(() => {
+        addLockedRef.current = false;
+        setShowAddedState(false);
+        setAddFeedback(null);
+        feedbackTimerRef.current = null;
+      }, 1500);
+    } catch {
+      addLockedRef.current = false;
+      setShowAddedState(false);
+      setAddFeedback({
+        type: "error",
+        message: "Could not add this item. Please try again.",
+      });
+      feedbackTimerRef.current = setTimeout(() => {
+        setAddFeedback(null);
+        feedbackTimerRef.current = null;
+      }, 3000);
+    }
+  };
+
   return (
     <>
       <article className="group surface flex h-full min-w-0 flex-col overflow-hidden p-3 transition duration-200 hover:-translate-y-1">
@@ -67,9 +132,19 @@ export function ProductCard({ product }: { product: Product }) {
             </span>
           </div>
           <div className="mt-auto grid grid-cols-[1fr_auto] gap-2 pt-4">
-            <Button onClick={() => addItem(product)} className="w-full" size="sm">
+            <Button
+              onClick={handleAddToCart}
+              className="w-full"
+              size="sm"
+              disabled={showAddedState}
+              aria-label={
+                showAddedState
+                  ? `${product.name} added to cart`
+                  : `Add ${product.name} to cart`
+              }
+            >
               <ShoppingBag size={16} />
-              Add to Cart
+              {showAddedState ? "Added" : "Add to Cart"}
             </Button>
             <button
               type="button"
@@ -80,6 +155,17 @@ export function ProductCard({ product }: { product: Product }) {
               <Eye size={17} />
             </button>
           </div>
+          <p
+            aria-live="polite"
+            aria-atomic="true"
+            className={`min-h-5 pt-2 text-xs font-medium ${
+              addFeedback?.type === "error"
+                ? "text-[var(--danger)]"
+                : "text-[var(--primary)]"
+            }`}
+          >
+            {addFeedback?.message ?? ""}
+          </p>
         </div>
       </article>
       <ProductQuickView product={product} open={quickView} onClose={() => setQuickView(false)} />

@@ -41,6 +41,18 @@ export function SiteHeader({ session }: { session?: Session | null }) {
               </Link>
             ))}
           </div>
+          <Link
+            className="relative grid size-10 place-items-center rounded-xl text-[var(--text)] hover:bg-[var(--muted-surface)] hover:text-[var(--primary)] sm:hidden"
+            href="/cart"
+            aria-label={`Cart${itemCount ? ` (${itemCount})` : ""}`}
+          >
+            <ShoppingCart size={20} />
+            {itemCount > 0 && (
+              <span className="absolute -right-0.5 top-0 grid size-4 place-items-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white">
+                {itemCount}
+              </span>
+            )}
+          </Link>
           {session?.user && (
             <span className="hidden max-w-28 truncate px-2 text-sm font-medium text-[var(--primary)] xl:inline">
               {accountLabel}

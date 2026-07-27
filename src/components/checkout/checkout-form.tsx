@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/providers/cart-provider";
-import { placeOrderAction } from "@/app/(store)/checkout/actions";
+import {
+  completeCheckoutSubmissionAction,
+  placeOrderAction,
+  prepareCheckoutSubmissionAction,
+} from "@/app/(store)/checkout/actions";
 import { checkoutFormSchema, type CheckoutInput } from "@/lib/orders/order-validation";
 import { formatCurrency } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
@@ -13,8 +17,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { ShoppingBag, Truck, CreditCard, Loader2, AlertCircle, TicketPercent, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { PaymentProvider } from "@/generated/prisma/enums";
+import {
+  asOnlinePaymentProvider,
+  type OnlinePaymentProvider,
+} from "@/lib/orders/payment-initiation-eligibility";
+import { requestOnlinePaymentRedirect } from "@/lib/payments/client-payment-initiation";
+import { PaymentRetryButton } from "@/components/payments/payment-retry-button";
 
 type Props = {
+  availableOnlineProviders: OnlinePaymentProvider[];
+  authenticationError?: string | null;
   initialUser?: {
     name?: string | null;
     email?: string | null;
@@ -22,11 +35,31 @@ type Props = {
   } | null;
 };
 
-export function CheckoutForm({ initialUser }: Props) {
+type PendingOnlinePayment = {
+  orderId: string;
+  orderNumber: string;
+  provider: OnlinePaymentProvider;
+  expiresAt: string;
+  retryEligible: boolean;
+};
+
+export function CheckoutForm({
+  availableOnlineProviders,
+  authenticationError,
+  initialUser,
+}: Props) {
   const router = useRouter();
   const { items, subtotal, clearCart, hydrated } = useCart();
+  const submissionInFlight = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [submissionStage, setSubmissionStage] = useState<
+    "placing" | "initiating"
+  >("placing");
+  const [pendingPayment, setPendingPayment] =
+    useState<PendingOnlinePayment | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(
+    authenticationError ?? null,
+  );
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Coupon state
@@ -125,8 +158,22 @@ export function CheckoutForm({ initialUser }: Props) {
     setCouponError(null);
   };
 
+  const finishCheckoutSubmission = async () => {
+    clearCart();
+    try {
+      await completeCheckoutSubmissionAction();
+    } catch {
+      // The signed checkout key also has a hard expiry.
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submissionInFlight.current || pendingPayment) return;
+    if (authenticationError) {
+      setErrorMessage(authenticationError);
+      return;
+    }
     setErrorMessage(null);
     setFieldErrors({});
 
@@ -161,19 +208,85 @@ export function CheckoutForm({ initialUser }: Props) {
       return;
     }
 
+    submissionInFlight.current = true;
+    setSubmissionStage("placing");
     setIsSubmitting(true);
+    let navigationStarted = false;
+
     try {
+      const prepared = await prepareCheckoutSubmissionAction();
+      if (!prepared.success) {
+        setErrorMessage(prepared.error);
+        return;
+      }
+
       const result = await placeOrderAction(parsed.data);
       if (result.success) {
-        clearCart();
-        router.push(`/checkout/success?orderNumber=${encodeURIComponent(result.orderNumber)}`);
+        const onlineProvider = asOnlinePaymentProvider(
+          result.paymentProvider,
+        );
+
+        if (onlineProvider) {
+          const pendingOrder = {
+            orderId: result.orderId,
+            orderNumber: result.orderNumber,
+            provider: onlineProvider,
+            expiresAt: result.expiresAt ?? "",
+            retryEligible: true,
+          };
+          setPendingPayment(pendingOrder);
+          setSubmissionStage("initiating");
+
+          const payment = await requestOnlinePaymentRedirect(
+            result.orderId,
+            onlineProvider,
+          );
+
+          if (payment.success) {
+            navigationStarted = true;
+            await finishCheckoutSubmission();
+            window.location.assign(payment.redirectUrl);
+            return;
+          }
+
+          if (payment.unavailable) {
+            setPendingPayment((current) =>
+              current ? { ...current, retryEligible: false } : current,
+            );
+          }
+          setErrorMessage(
+            payment.unavailable
+              ? "Payment can no longer be started for this order. Your cart has been preserved."
+              : "Your order was created, but payment could not be started. Retry payment below; your cart has been preserved.",
+          );
+          return;
+        }
+
+        if (
+          result.paymentProvider === PaymentProvider.CASH_ON_DELIVERY ||
+          result.paymentProvider === PaymentProvider.MANUAL
+        ) {
+          navigationStarted = true;
+          await finishCheckoutSubmission();
+          router.push(
+            `/checkout/success?orderNumber=${encodeURIComponent(result.orderNumber)}`,
+          );
+          return;
+        }
+
+        setErrorMessage(
+          "Your order was created, but its payment method could not be continued safely.",
+        );
       } else {
         setErrorMessage(result.error);
       }
     } catch {
       setErrorMessage("An error occurred while processing your order. Please try again.");
     } finally {
-      setIsSubmitting(false);
+      if (!navigationStarted) {
+        submissionInFlight.current = false;
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -442,6 +555,48 @@ export function CheckoutForm({ initialUser }: Props) {
                 </p>
               </div>
             )}
+
+            {availableOnlineProviders.includes(PaymentProvider.STRIPE) && (
+              <label className="flex items-center gap-3 rounded-xl border p-4 cursor-pointer hover:bg-[var(--muted-surface)] transition">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="STRIPE"
+                  checked={formData.paymentMethod === "STRIPE"}
+                  onChange={handleChange}
+                  className="size-4 text-[var(--primary)]"
+                />
+                <div>
+                  <p className="font-bold">Credit / Debit Card (Stripe)</p>
+                  <p className="text-xs text-[var(--muted)]">
+                    Continue to Stripe Checkout after placing your order
+                  </p>
+                </div>
+              </label>
+            )}
+
+            {availableOnlineProviders.includes(
+              PaymentProvider.SSLCOMMERZ,
+            ) && (
+              <label className="flex items-center gap-3 rounded-xl border p-4 cursor-pointer hover:bg-[var(--muted-surface)] transition">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="SSLCOMMERZ"
+                  checked={formData.paymentMethod === "SSLCOMMERZ"}
+                  onChange={handleChange}
+                  className="size-4 text-[var(--primary)]"
+                />
+                <div>
+                  <p className="font-bold">
+                    Card / Mobile Banking (SSLCommerz)
+                  </p>
+                  <p className="text-xs text-[var(--muted)]">
+                    Continue to the secure SSLCommerz gateway after ordering
+                  </p>
+                </div>
+              </label>
+            )}
           </div>
 
           <div className="mt-5">
@@ -567,17 +722,51 @@ export function CheckoutForm({ initialUser }: Props) {
             </div>
           </div>
 
+          {pendingPayment && (
+            <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-semibold text-amber-900">
+                Order {pendingPayment.orderNumber} is waiting for payment.
+              </p>
+              <p className="mt-1 text-xs text-amber-800">
+                Retrying uses this order and will not create another order.
+              </p>
+              {pendingPayment.expiresAt && pendingPayment.retryEligible ? (
+                <PaymentRetryButton
+                  className="mt-3"
+                  orderId={pendingPayment.orderId}
+                  provider={pendingPayment.provider}
+                  expiresAt={pendingPayment.expiresAt}
+                  label="Pay now"
+                  onRedirectReady={finishCheckoutSubmission}
+                />
+              ) : (
+                <p className="mt-2 text-xs text-amber-800">
+                  This order is not eligible for another payment attempt.
+                </p>
+              )}
+            </div>
+          )}
+
           <Button
             type="submit"
             variant="primary"
             size="lg"
             className="w-full mt-6"
-            disabled={isSubmitting}
+            disabled={
+              isSubmitting ||
+              Boolean(pendingPayment) ||
+              Boolean(authenticationError)
+            }
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="size-5 animate-spin" /> Placing Order...
+                <Loader2 className="size-5 animate-spin" />
+                {submissionStage === "initiating"
+                  ? "Connecting to payment..."
+                  : "Placing Order..."}
               </>
+            ) : pendingPayment ? (
+              "Order already created"
             ) : (
               `Place Order (${formatCurrency(grandTotal)})`
             )}

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/guards";
 import { getCustomerOrderDetails } from "@/lib/orders/order-listing";
 import { CustomerOrderDetailsView } from "@/components/account/customer-order-details";
+import { evaluatePaymentInitiationEligibility } from "@/lib/orders/payment-initiation-eligibility";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -21,9 +22,21 @@ export default async function CustomerOrderDetailsPage({ params }: Props) {
     notFound();
   }
 
+  const paymentEligibility = evaluatePaymentInitiationEligibility(order);
+
   return (
     <div className="max-w-4xl mx-auto">
-      <CustomerOrderDetailsView order={order} />
+      <CustomerOrderDetailsView
+        order={order}
+        paymentRetry={
+          paymentEligibility.eligible && order.expiresAt
+            ? {
+                provider: paymentEligibility.provider,
+                expiresAt: order.expiresAt.toISOString(),
+              }
+            : null
+        }
+      />
     </div>
   );
 }

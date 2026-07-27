@@ -5,7 +5,18 @@ import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, ShoppingBag, Truck, CreditCard } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  ShoppingBag,
+  Truck,
+  CreditCard,
+  XCircle,
+} from "lucide-react";
+import { OrderStatus, PaymentStatus } from "@/generated/prisma/enums";
+import { evaluatePaymentInitiationEligibility } from "@/lib/orders/payment-initiation-eligibility";
+import { PaymentRetryButton } from "@/components/payments/payment-retry-button";
 
 type Props = {
   searchParams: Promise<{ orderNumber?: string }>;
@@ -31,20 +42,82 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
     notFound();
   }
 
+  const now = new Date();
+  const paymentEligibility = evaluatePaymentInitiationEligibility(order, now);
+  const reservationExpired =
+    order.reservationReleasedAt !== null ||
+    (order.expiresAt !== null && order.expiresAt <= now);
+  const isCancelled =
+    order.status === OrderStatus.CANCELLED ||
+    order.status === OrderStatus.RETURNED ||
+    order.status === OrderStatus.REFUNDED;
+  const paymentState =
+    isCancelled || reservationExpired
+      ? {
+          title: "Order expired or cancelled",
+          message:
+            "This order can no longer accept payment. No payment status was changed from this page.",
+          label: "Expired / Cancelled",
+          icon: XCircle,
+          className: "border-red-200 bg-red-50/40 text-red-700",
+        }
+      : order.paymentStatus === PaymentStatus.PAID
+        ? {
+            title: "Payment verified",
+            message:
+              "Your payment has been verified and the order is ready for processing.",
+            label: "Paid / Verified",
+            icon: CheckCircle2,
+            className:
+              "border-emerald-100 bg-emerald-50/30 text-emerald-700",
+          }
+        : order.paymentStatus === PaymentStatus.FAILED
+          ? {
+              title: "Payment failed",
+              message:
+                "The order remains pending. You may retry while its reservation is eligible.",
+              label: "Payment Failed",
+              icon: AlertCircle,
+              className: "border-red-200 bg-red-50/40 text-red-700",
+            }
+          : {
+              title: "Payment pending",
+              message:
+                "Your order was created. Payment confirmation may still be processing.",
+              label: "Payment Pending",
+              icon: Clock,
+              className: "border-amber-200 bg-amber-50/40 text-amber-700",
+            };
+  const PaymentStateIcon = paymentState.icon;
+
   return (
     <div className="container mx-auto max-w-3xl px-4 py-12">
-      <Card className="p-8 text-center border-emerald-100 bg-emerald-50/30">
-        <div className="mx-auto grid size-16 place-items-center rounded-full bg-emerald-100 text-emerald-700">
-          <CheckCircle2 size={36} />
+      <Card className={`p-8 text-center ${paymentState.className}`}>
+        <div className="mx-auto grid size-16 place-items-center rounded-full bg-white/80">
+          <PaymentStateIcon size={36} />
         </div>
-        <h1 className="mt-4 text-3xl font-extrabold text-[var(--primary)]">Thank You for Your Order!</h1>
-        <p className="mt-2 text-[var(--muted)]">
-          Your order has been placed successfully. We are preparing your plants for delivery.
-        </p>
+        <h1 className="mt-4 text-3xl font-extrabold text-[var(--primary)]">
+          {paymentState.title}
+        </h1>
+        <p className="mt-2 text-[var(--muted)]">{paymentState.message}</p>
 
         <div className="mt-6 inline-block rounded-xl bg-white border px-6 py-3 font-mono font-bold text-lg text-[var(--primary)] shadow-sm">
           Order Number: <span className="text-emerald-700">{order.orderNumber}</span>
         </div>
+
+        {paymentEligibility.eligible && order.expiresAt && (
+          <PaymentRetryButton
+            className="mt-5"
+            orderId={order.id}
+            provider={paymentEligibility.provider}
+            expiresAt={order.expiresAt.toISOString()}
+            label={
+              order.paymentStatus === PaymentStatus.FAILED
+                ? "Retry payment"
+                : "Pay now"
+            }
+          />
+        )}
       </Card>
 
       <div className="mt-8 space-y-6">
@@ -118,7 +191,8 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
               Method: <span className="font-normal">{order.paymentMethod || "Cash on Delivery"}</span>
             </p>
             <p className="text-sm font-semibold mt-1">
-              Payment Status: <span className="font-normal">{order.paymentStatus}</span>
+              Payment Status:{" "}
+              <span className="font-normal">{paymentState.label}</span>
             </p>
             <p className="text-xs text-[var(--muted)] mt-2">
               Placed On: {formatDate(order.createdAt)}

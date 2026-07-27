@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { OrderStatus, PaymentStatus } from "@/generated/prisma/enums";
 import { ArrowLeft, ShoppingBag, Truck, CreditCard, Clock, XCircle, Loader2 } from "lucide-react";
+import { PaymentRetryButton } from "@/components/payments/payment-retry-button";
+import type { OnlinePaymentProvider } from "@/lib/orders/payment-initiation-eligibility";
 
 type OrderItem = {
   id: string;
@@ -60,7 +62,18 @@ type CustomerOrderDetails = {
   statusHistory: StatusHistoryItem[];
 };
 
-export function CustomerOrderDetailsView({ order }: { order: CustomerOrderDetails }) {
+type PaymentRetry = {
+  provider: OnlinePaymentProvider;
+  expiresAt: string;
+};
+
+export function CustomerOrderDetailsView({
+  order,
+  paymentRetry,
+}: {
+  order: CustomerOrderDetails;
+  paymentRetry: PaymentRetry | null;
+}) {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -150,6 +163,14 @@ export function CustomerOrderDetailsView({ order }: { order: CustomerOrderDetail
             <p className="text-sm mt-1">
               <span className="font-semibold">Status:</span> {order.paymentStatus}
             </p>
+            {paymentRetry && (
+              <PaymentRetryButton
+                className="mt-3"
+                orderId={order.id}
+                provider={paymentRetry.provider}
+                expiresAt={paymentRetry.expiresAt}
+              />
+            )}
             {order.customerNote && (
               <p className="text-xs text-[var(--muted)] mt-2 italic">
                 &quot;{order.customerNote}&quot;

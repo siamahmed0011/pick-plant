@@ -1,7 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { ProductStatus, InventoryMovementType, OrderStatus, PaymentStatus } from "@/generated/prisma/enums";
+import { CartStatus, ProductStatus, InventoryMovementType, OrderStatus, PaymentStatus } from "@/generated/prisma/enums";
 import { generateOrderNumber } from "@/lib/orders/order-number";
 import { checkoutFormSchema, type CheckoutInput } from "@/lib/orders/order-validation";
 import {
@@ -59,11 +59,46 @@ function onlineOrderExpiresAt(provider: PaymentProvider) {
   return new Date(Date.now() + ONLINE_ORDER_EXPIRATION_MS);
 }
 
-export async function createOrder(input: CheckoutInput, userId?: string) {
+export async function createOrder(
+  input: CheckoutInput,
+  userId: string | undefined,
+  sourceCartId: string,
+) {
   const validated = checkoutFormSchema.parse(input);
 
-  return prisma.$transaction(
-    async (tx) => {
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const sourceCart = await tx.cart.findUnique({
+          where: { id: sourceCartId },
+          select: {
+            userId: true,
+            status: true,
+            expiresAt: true,
+          },
+        });
+        if (
+          !sourceCart ||
+          sourceCart.userId !== (userId ?? null) ||
+          !sourceCart.expiresAt ||
+          sourceCart.expiresAt <= new Date()
+        ) {
+          throw new OrderValidationError(
+            "Checkout session expired. Please submit your order again.",
+          );
+        }
+
+        const replayedOrder = await tx.order.findUnique({
+          where: { sourceCartId },
+          include: { items: true },
+        });
+        if (replayedOrder) return replayedOrder;
+        if (sourceCart.status !== CartStatus.ACTIVE) {
+          throw new OrderValidationError(
+            "Checkout session is no longer available.",
+          );
+        }
+
       // 1. Fetch live products from DB
       const productIds = validated.items.map((i) => i.productId);
       const products = await tx.product.findMany({
@@ -219,6 +254,7 @@ export async function createOrder(input: CheckoutInput, userId?: string) {
         data: {
           orderNumber,
           userId: userId || null,
+          sourceCartId,
           status: OrderStatus.PENDING,
           paymentStatus: PaymentStatus.PENDING,
           paymentProvider: provider,
@@ -335,10 +371,28 @@ export async function createOrder(input: CheckoutInput, userId?: string) {
         },
       });
 
+      await tx.cart.update({
+        where: { id: sourceCartId },
+        data: { status: CartStatus.CONVERTED },
+      });
+
       return order;
-    },
-    { isolationLevel: "Serializable" }
-  );
+      },
+      { isolationLevel: "Serializable" },
+    );
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      (error.code === "P2002" || error.code === "P2034")
+    ) {
+      const replayedOrder = await prisma.order.findUnique({
+        where: { sourceCartId },
+        include: { items: true },
+      });
+      if (replayedOrder) return replayedOrder;
+    }
+    throw error;
+  }
 }
 
 export async function updateOrderStatus(

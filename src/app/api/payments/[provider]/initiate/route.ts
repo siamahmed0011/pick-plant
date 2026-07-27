@@ -27,6 +27,8 @@ import {
   SSLCommerzProofError,
   SSLCommerzProviderUnavailableError,
 } from "@/lib/payments/providers/sslcommerz";
+import { evaluatePaymentInitiationEligibility } from "@/lib/orders/payment-initiation-eligibility";
+import { verifiedPaymentRedirectUrl } from "@/lib/payments/payment-redirect-url";
 
 type StripeOrder = {
   id: string;
@@ -193,17 +195,24 @@ async function prepareStripeAttempt(orderId: string, remainingRetries = 2) {
   if (payment.transactionId?.startsWith("cs_")) {
     try {
       const session = await retrieveStripeCheckoutSession(payment.transactionId);
+      const redirectUrl = verifiedPaymentRedirectUrl(
+        session.url,
+        PaymentProvider.STRIPE,
+      );
       const isActive =
         session.mode === "payment" &&
         session.status === "open" &&
         session.expires_at * 1000 > Date.now() &&
-        Boolean(session.url);
+        redirectUrl !== null;
 
       if (isActive) {
         return {
           paymentTransactionId: payment.id,
           idempotencyKey: payment.idempotencyKey,
-          existingSession: session,
+          existingSession: {
+            id: session.id,
+            url: redirectUrl,
+          },
         } as const;
       }
 
@@ -939,6 +948,38 @@ export async function POST(
     // Ownership check: if order belongs to a user, verify session
     if (order.userId && session?.user?.id !== order.userId && session?.user?.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized access to order" }, { status: 403 });
+    }
+
+    if (isStripeRequest || isSSLCommerzRequest) {
+      if (order.paymentProvider !== providerEnum) {
+        return NextResponse.json(
+          { error: "This payment method is not available for the order." },
+          { status: 400 },
+        );
+      }
+
+      const eligibility = evaluatePaymentInitiationEligibility(order);
+      if (!eligibility.eligible) {
+        return NextResponse.json(
+          {
+            error:
+              eligibility.reason === "expired_or_expiring"
+                ? "The payment reservation has expired or is too close to expiry."
+                : "Payment cannot be started for this order.",
+            code: "PAYMENT_NOT_ELIGIBLE",
+          },
+          { status: 409 },
+        );
+      }
+      if (eligibility.provider !== providerEnum) {
+        return NextResponse.json(
+          {
+            error: "Payment cannot be started for this order.",
+            code: "PAYMENT_NOT_ELIGIBLE",
+          },
+          { status: 409 },
+        );
+      }
     }
 
     if (providerEnum === PaymentProvider.STRIPE) {

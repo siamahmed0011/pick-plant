@@ -7,6 +7,7 @@ import type {
   PaymentInitiateResult,
   PaymentVerificationResult,
 } from "@/lib/payments/payment-provider";
+import { verifiedPaymentRedirectUrl } from "@/lib/payments/payment-redirect-url";
 
 const supportedSuccessfulEventTypes = new Set<Stripe.Event.Type>([
   "checkout.session.completed",
@@ -256,7 +257,11 @@ export class StripeProvider implements PaymentProviderAdapter {
         },
       );
 
-      if (!session.url) {
+      const redirectUrl = verifiedPaymentRedirectUrl(
+        session.url,
+        PaymentProvider.STRIPE,
+      );
+      if (!redirectUrl) {
         return {
           success: false,
           error: "Stripe did not return a Checkout URL.",
@@ -265,7 +270,7 @@ export class StripeProvider implements PaymentProviderAdapter {
 
       return {
         success: true,
-        redirectUrl: session.url,
+        redirectUrl,
         transactionId: session.id,
       };
     } catch (error) {
