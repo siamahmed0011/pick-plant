@@ -52,12 +52,40 @@ export async function completeCheckoutSubmissionAction() {
   await completeCheckoutIdempotency();
 }
 
+import { headers } from "next/headers";
+import { getClientIp } from "@/lib/rate-limit/helpers";
+import { checkCheckoutRateLimit } from "@/lib/rate-limit/rate-limit";
 import { sendOrderConfirmationEmail } from "@/lib/email/email-service";
+import { findExistingOrderBySourceCartId } from "@/lib/orders/order-service";
 
 export async function placeOrderAction(input: CheckoutInput): Promise<CheckoutActionResult> {
   try {
     const session = await getCheckoutSession();
     const checkoutIdempotencyKey = await requireCheckoutIdempotency();
+
+    const existingOrder = await findExistingOrderBySourceCartId(checkoutIdempotencyKey);
+    if (existingOrder) {
+      return {
+        success: true,
+        orderId: existingOrder.id,
+        orderNumber: existingOrder.orderNumber,
+        paymentProvider: existingOrder.paymentProvider,
+        expiresAt: existingOrder.expiresAt?.toISOString() ?? null,
+      };
+    }
+
+    const reqHeaders = await headers();
+    const clientIp = getClientIp(reqHeaders);
+    const rateLimitKey = session?.user?.id || checkoutIdempotencyKey || "guest";
+    const rateLimit = await checkCheckoutRateLimit(clientIp, rateLimitKey);
+
+    if (!rateLimit.success) {
+      return {
+        success: false,
+        error: `Too many checkout attempts. Please try again in ${rateLimit.retryAfterSeconds} seconds.`,
+      };
+    }
+
     const { order, isNewOrder } = await createOrder(
       input,
       session?.user?.id,

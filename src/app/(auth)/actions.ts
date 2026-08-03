@@ -15,6 +15,15 @@ import {
   sendVerificationEmail,
 } from "@/lib/email/email-service";
 
+import { headers } from "next/headers";
+import { getClientIp } from "@/lib/rate-limit/helpers";
+import {
+  checkLoginRateLimit,
+  checkRegistrationRateLimit,
+  checkForgotPasswordRateLimit,
+  checkResendVerificationRateLimit,
+} from "@/lib/rate-limit/rate-limit";
+
 export type AuthFailureResult = { ok: false; message: string; fieldErrors?: string[] };
 export type AuthActionResult =
   | { ok: true; message: string; redirectTo?: string }
@@ -27,6 +36,17 @@ export async function loginAction(formData: FormData): Promise<AuthActionResult>
       ok: false,
       message: "Invalid email or password.",
       fieldErrors: parsed.error.issues.map((issue) => issue.message),
+    };
+  }
+
+  const reqHeaders = await headers();
+  const clientIp = getClientIp(reqHeaders);
+  const rateLimit = await checkLoginRateLimit(clientIp, parsed.data.email);
+
+  if (!rateLimit.success) {
+    return {
+      ok: false,
+      message: `Too many login attempts. Please try again in ${rateLimit.retryAfterSeconds} seconds.`,
     };
   }
 
@@ -68,6 +88,17 @@ export async function registrationAction(formData: FormData): Promise<AuthAction
       ok: false,
       message: "Please review the highlighted account details.",
       fieldErrors: parsed.error.issues.map((issue) => issue.message),
+    };
+  }
+
+  const reqHeaders = await headers();
+  const clientIp = getClientIp(reqHeaders);
+  const rateLimit = await checkRegistrationRateLimit(clientIp);
+
+  if (!rateLimit.success) {
+    return {
+      ok: false,
+      message: `Too many account creation attempts. Please try again in ${rateLimit.retryAfterSeconds} seconds.`,
     };
   }
 
@@ -137,6 +168,17 @@ export async function forgotPasswordAction(formData: FormData): Promise<AuthActi
 
   const safeSuccessMessage =
     "If an account with that email address exists, instructions to reset your password have been generated.";
+
+  const reqHeaders = await headers();
+  const clientIp = getClientIp(reqHeaders);
+  const rateLimit = await checkForgotPasswordRateLimit(clientIp, parsedEmail.data);
+
+  if (!rateLimit.success) {
+    return {
+      ok: true,
+      message: safeSuccessMessage,
+    };
+  }
 
   try {
     const result = await createPasswordResetToken(parsedEmail.data);
@@ -228,6 +270,17 @@ export async function resendVerificationAction(formData: FormData): Promise<Auth
 
   const safeMessage =
     "If an account with that email address exists and requires verification, a new verification link has been generated.";
+
+  const reqHeaders = await headers();
+  const clientIp = getClientIp(reqHeaders);
+  const rateLimit = await checkResendVerificationRateLimit(clientIp, parsedEmail.data);
+
+  if (!rateLimit.success) {
+    return {
+      ok: true,
+      message: safeMessage,
+    };
+  }
 
   try {
     const user = await prisma.user.findUnique({

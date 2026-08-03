@@ -903,6 +903,9 @@ async function initiateSSLCommerzPayment(
   });
 }
 
+import { getClientIp } from "@/lib/rate-limit/helpers";
+import { checkPaymentInitiateRateLimit } from "@/lib/rate-limit/rate-limit";
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ provider: string }> }
@@ -918,10 +921,26 @@ export async function POST(
     isStripeRequest = providerEnum === PaymentProvider.STRIPE;
     isSSLCommerzRequest = providerEnum === PaymentProvider.SSLCOMMERZ;
 
-    const body = await request.json();
+    const body = await request.clone().json().catch(() => ({}));
     const { orderId } = body;
     requestedOrderId =
       typeof orderId === "string" && orderId ? orderId : "unknown";
+
+    const clientIp = getClientIp(request.headers);
+    const rateLimitKey = requestedOrderId !== "unknown" ? requestedOrderId : (session?.user?.id || "anonymous");
+    const rateLimit = await checkPaymentInitiateRateLimit(clientIp, rateLimitKey);
+
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        { error: "Too many payment initiation attempts. Please try again shortly." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateLimit.retryAfterSeconds),
+          },
+        }
+      );
+    }
 
     if (!orderId) {
       return NextResponse.json({ error: "orderId is required" }, { status: 400 });

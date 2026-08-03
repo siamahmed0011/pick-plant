@@ -59,6 +59,14 @@ function onlineOrderExpiresAt(provider: PaymentProvider) {
   return new Date(Date.now() + ONLINE_ORDER_EXPIRATION_MS);
 }
 
+export async function findExistingOrderBySourceCartId(sourceCartId: string) {
+  if (!sourceCartId || sourceCartId.length > 128) return null;
+  return prisma.order.findUnique({
+    where: { sourceCartId },
+    include: { items: true },
+  });
+}
+
 export async function createOrder(
   input: CheckoutInput,
   userId: string | undefined,
