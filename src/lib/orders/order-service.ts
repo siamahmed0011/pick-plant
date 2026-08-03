@@ -92,7 +92,7 @@ export async function createOrder(
           where: { sourceCartId },
           include: { items: true },
         });
-        if (replayedOrder) return replayedOrder;
+        if (replayedOrder) return { order: replayedOrder, isNewOrder: false };
         if (sourceCart.status !== CartStatus.ACTIVE) {
           throw new OrderValidationError(
             "Checkout session is no longer available.",
@@ -376,7 +376,7 @@ export async function createOrder(
         data: { status: CartStatus.CONVERTED },
       });
 
-      return order;
+      return { order, isNewOrder: true };
       },
       { isolationLevel: "Serializable" },
     );
@@ -389,7 +389,7 @@ export async function createOrder(
         where: { sourceCartId },
         include: { items: true },
       });
-      if (replayedOrder) return replayedOrder;
+      if (replayedOrder) return { order: replayedOrder, isNewOrder: false };
     }
     throw error;
   }
@@ -400,13 +400,22 @@ export async function updateOrderStatus(
   actor: OrderActor
 ) {
   if (input.status === OrderStatus.CANCELLED) {
-    return cancelOrder(
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: input.orderId },
+      include: { items: true },
+    });
+    if (!existingOrder) throw new OrderNotFoundError("Order not found.");
+    if (existingOrder.status === OrderStatus.CANCELLED) {
+      return { order: existingOrder, statusChanged: false };
+    }
+    const cancelled = await cancelOrder(
       {
         orderId: input.orderId,
         reason: input.note || "Order cancelled by admin",
       },
       actor,
     );
+    return { order: cancelled, statusChanged: true };
   }
 
   return prisma.$transaction(async (tx) => {
@@ -418,7 +427,7 @@ export async function updateOrderStatus(
     if (!order) throw new OrderNotFoundError("Order not found.");
 
     if (order.status === input.status) {
-      return order;
+      return { order, statusChanged: false };
     }
 
     if (!isValidOrderStatusTransition(order.status, input.status)) {
@@ -427,12 +436,26 @@ export async function updateOrderStatus(
       );
     }
 
-    const updated = await tx.order.update({
-      where: { id: order.id },
+    const updateResult = await tx.order.updateMany({
+      where: {
+        id: order.id,
+        status: order.status,
+      },
       data: {
         status: input.status,
       },
     });
+
+    if (updateResult.count === 0) {
+      const reFetchedOrder = await tx.order.findUnique({
+        where: { id: order.id },
+        include: { items: true },
+      });
+      return {
+        order: reFetchedOrder || order,
+        statusChanged: false,
+      };
+    }
 
     await tx.orderStatusHistory.create({
       data: {
@@ -446,7 +469,15 @@ export async function updateOrderStatus(
       },
     });
 
-    return updated;
+    const updatedOrder = await tx.order.findUnique({
+      where: { id: order.id },
+      include: { items: true },
+    });
+
+    return {
+      order: updatedOrder || { ...order, status: input.status },
+      statusChanged: true,
+    };
   });
 }
 

@@ -52,15 +52,26 @@ export async function completeCheckoutSubmissionAction() {
   await completeCheckoutIdempotency();
 }
 
+import { sendOrderConfirmationEmail } from "@/lib/email/email-service";
+
 export async function placeOrderAction(input: CheckoutInput): Promise<CheckoutActionResult> {
   try {
     const session = await getCheckoutSession();
     const checkoutIdempotencyKey = await requireCheckoutIdempotency();
-    const order = await createOrder(
+    const { order, isNewOrder } = await createOrder(
       input,
       session?.user?.id,
       checkoutIdempotencyKey,
     );
+
+    if (isNewOrder) {
+      try {
+        await sendOrderConfirmationEmail(order);
+      } catch (err) {
+        console.error("Failed to send order confirmation email:", err);
+      }
+    }
+
     return {
       success: true,
       orderId: order.id,

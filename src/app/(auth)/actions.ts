@@ -10,6 +10,10 @@ import {
   createEmailVerificationToken,
   consumeEmailVerificationToken,
 } from "@/lib/auth/email-verification";
+import {
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+} from "@/lib/email/email-service";
 
 export type AuthFailureResult = { ok: false; message: string; fieldErrors?: string[] };
 export type AuthActionResult =
@@ -81,7 +85,7 @@ export async function registrationAction(formData: FormData): Promise<AuthAction
     }
 
     const passwordHash = await hashPassword(parsed.data.password);
-    await prisma.user.create({
+    const user = await prisma.user.create({
       data: {
         name: parsed.data.name,
         email: parsed.data.email,
@@ -90,9 +94,25 @@ export async function registrationAction(formData: FormData): Promise<AuthAction
       },
     });
 
+    try {
+      const email = user.email ?? parsed.data.email;
+      const verification = await createEmailVerificationToken(email);
+      if (verification.created && verification.rawToken) {
+        if (process.env.NODE_ENV === "development") {
+          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+          console.info(
+            `[DEV ONLY] Email verification URL generated for ${email}: ${baseUrl}/verify-email?token=${verification.rawToken}`,
+          );
+        }
+        await sendVerificationEmail(email, verification.rawToken);
+      }
+    } catch (err) {
+      console.error("Failed to send registration verification email:", err);
+    }
+
     return {
       ok: true,
-      message: "Your account was created. You can sign in now.",
+      message: "Your account was created. Please check your email to verify your account.",
     };
   } catch {
     return {
@@ -121,11 +141,15 @@ export async function forgotPasswordAction(formData: FormData): Promise<AuthActi
   try {
     const result = await createPasswordResetToken(parsedEmail.data);
 
-    if (process.env.NODE_ENV === "development" && result.created && result.rawToken) {
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-      console.info(
-        `[DEV ONLY] Password reset URL generated for ${result.email}: ${baseUrl}/reset-password?token=${result.rawToken}`,
-      );
+    if (result.created && result.rawToken && result.email) {
+      if (process.env.NODE_ENV === "development") {
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+        console.info(
+          `[DEV ONLY] Password reset URL generated for ${result.email}: ${baseUrl}/reset-password?token=${result.rawToken}`,
+        );
+      }
+
+      await sendPasswordResetEmail(result.email, result.rawToken);
     }
 
     return {
@@ -214,11 +238,15 @@ export async function resendVerificationAction(formData: FormData): Promise<Auth
     if (user && user.email && user.emailVerified === null) {
       const verification = await createEmailVerificationToken(user.email);
 
-      if (process.env.NODE_ENV === "development" && verification.created && verification.rawToken) {
-        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-        console.info(
-          `[DEV ONLY] Email verification URL generated for ${user.email}: ${baseUrl}/verify-email?token=${verification.rawToken}`,
-        );
+      if (verification.created && verification.rawToken) {
+        if (process.env.NODE_ENV === "development") {
+          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+          console.info(
+            `[DEV ONLY] Email verification URL generated for ${user.email}: ${baseUrl}/verify-email?token=${verification.rawToken}`,
+          );
+        }
+
+        await sendVerificationEmail(user.email, verification.rawToken);
       }
     }
 

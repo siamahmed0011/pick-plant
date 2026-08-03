@@ -10,6 +10,7 @@ import {
 } from "@/lib/orders/order-service";
 import { OrderStatus, PaymentStatus } from "@/generated/prisma/enums";
 import { revalidatePath } from "next/cache";
+import { sendOrderStatusUpdateEmail } from "@/lib/email/email-service";
 
 export async function updateOrderStatusAction(input: {
   orderId: string;
@@ -18,7 +19,7 @@ export async function updateOrderStatusAction(input: {
 }) {
   try {
     const session = await requireAdmin("/admin/orders");
-    await updateOrderStatus(input, {
+    const { order: updatedOrder, statusChanged } = await updateOrderStatus(input, {
       id: session.user.id,
       name: session.user.name,
       email: session.user.email,
@@ -26,6 +27,15 @@ export async function updateOrderStatusAction(input: {
     });
     revalidatePath("/admin/orders");
     revalidatePath(`/admin/orders/${input.orderId}`);
+
+    if (statusChanged && updatedOrder && updatedOrder.customerEmail) {
+      try {
+        await sendOrderStatusUpdateEmail(updatedOrder, input.status);
+      } catch (err) {
+        console.error("Failed to send order status update email:", err);
+      }
+    }
+
     return { success: true };
   } catch (error) {
     if (error instanceof OrderError) {
