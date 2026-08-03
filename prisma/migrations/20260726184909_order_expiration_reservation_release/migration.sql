@@ -1,2 +1,4 @@
--- RenameIndex
-ALTER INDEX "processed_payment_events_payment_transaction_id_processed_at_id" RENAME TO "processed_payment_events_payment_transaction_id_processed_a_idx";
+-- No-op migration.
+-- This migration is intentionally empty.
+-- The processed_payment_events table and indexes are created by
+-- 20260726190000_add_processed_payment_events.
