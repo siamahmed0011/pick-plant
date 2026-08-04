@@ -1,10 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { formatCurrency, formatDate } from "@/lib/formatters";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { ChevronRight, PackageCheck } from "lucide-react";
+import { ChevronRight, Package } from "lucide-react";
+import { OrderStatusBadge, PaymentStatusBadge } from "@/components/account/status-badge";
 import { OrderStatus, PaymentStatus } from "@/generated/prisma/enums";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 type OrderItemSummary = {
   id: string;
@@ -25,84 +24,59 @@ type CustomerOrderListItem = {
   items: OrderItemSummary[];
 };
 
-function getStatusBadge(status: OrderStatus) {
-  switch (status) {
-    case OrderStatus.PENDING:
-      return <Badge className="bg-amber-100 text-amber-800">Pending</Badge>;
-    case OrderStatus.CONFIRMED:
-      return <Badge className="bg-blue-100 text-blue-800">Confirmed</Badge>;
-    case OrderStatus.PROCESSING:
-      return <Badge className="bg-purple-100 text-purple-800">Processing</Badge>;
-    case OrderStatus.SHIPPED:
-      return <Badge className="bg-indigo-100 text-indigo-800">Shipped</Badge>;
-    case OrderStatus.DELIVERED:
-      return <Badge className="bg-emerald-100 text-emerald-800">Delivered</Badge>;
-    case OrderStatus.CANCELLED:
-      return <Badge className="bg-red-100 text-red-800">Cancelled</Badge>;
-    case OrderStatus.RETURNED:
-      return <Badge className="bg-gray-100 text-gray-800">Returned</Badge>;
-    case OrderStatus.REFUNDED:
-      return <Badge className="bg-orange-100 text-orange-800">Refunded</Badge>;
-    default:
-      return <Badge>{status}</Badge>;
-  }
-}
-
-function getPaymentBadge(status: PaymentStatus) {
-  switch (status) {
-    case PaymentStatus.PAID:
-      return <Badge className="bg-emerald-100 text-emerald-800">Paid</Badge>;
-    case PaymentStatus.PENDING:
-    case PaymentStatus.UNPAID:
-      return <Badge className="bg-amber-100 text-amber-800">Unpaid</Badge>;
-    case PaymentStatus.FAILED:
-      return <Badge className="bg-red-100 text-red-800">Failed</Badge>;
-    case PaymentStatus.REFUNDED:
-      return <Badge className="bg-orange-100 text-orange-800">Refunded</Badge>;
-    default:
-      return <Badge>{status}</Badge>;
-  }
-}
-
 export function CustomerOrdersList({ orders }: { orders: CustomerOrderListItem[] }) {
   if (orders.length === 0) {
     return (
-      <Card className="p-10 text-center">
-        <PackageCheck className="mx-auto size-12 text-[var(--muted)]" />
-        <h2 className="mt-4 text-xl font-bold">No orders found</h2>
-        <p className="mt-1 text-sm text-[var(--muted)]">You haven&apos;t placed any orders yet.</p>
-        <Link
-          href="/plants"
-          className="mt-6 inline-flex h-10 items-center justify-center rounded-xl bg-[var(--primary)] px-5 font-semibold text-white transition hover:bg-[var(--primary-hover)] text-sm"
-        >
-          Explore Plants
-        </Link>
-      </Card>
+      <div className="rounded-[18px] border border-[#DDE7DD] bg-[#FFFFFF] p-6 sm:p-8 text-center shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+        <div className="mx-auto grid size-11 place-items-center rounded-2xl bg-[#EEF5F0] text-[#1E5A3A] border border-[#DDE7DD] mb-3">
+          <Package size={22} />
+        </div>
+        <h2 className="text-base sm:text-lg font-bold text-[#1F2D22]">No orders yet</h2>
+        <p className="mt-1 text-xs text-[#66746A] max-w-sm mx-auto leading-relaxed">
+          Your plant orders will appear here after checkout. Browse our nursery collection to find your first plant.
+        </p>
+        <div className="mt-4">
+          <Link
+            href="/plants"
+            className="inline-flex h-10 items-center justify-center rounded-[14px] bg-[#1E5A3A] px-5 text-xs font-semibold text-white transition hover:bg-[#17482F] shadow-xs"
+          >
+            Explore plants
+          </Link>
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
       {orders.map((order) => (
-        <Card key={order.id} className="p-6 transition hover:shadow-md">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
+        <div
+          key={order.id}
+          className="group rounded-[18px] border border-[#DDE7DD] bg-[#FFFFFF] p-4 sm:p-5 shadow-[0_4px_16px_rgba(0,0,0,0.04)] hover:border-[#1E5A3A]/40 hover:-translate-y-0.5 transition-all duration-150"
+        >
+          {/* Top Bar: Order Number, Date, Badges */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#DDE7DD] pb-3.5">
             <div>
-              <span className="font-mono font-bold text-lg text-[var(--primary)]">
+              <span className="font-mono text-base font-bold text-[#1E5A3A]">
                 {order.orderNumber}
               </span>
-              <p className="text-xs text-[var(--muted)]">Placed on {formatDate(order.createdAt)}</p>
+              <p className="text-xs text-[#66746A] mt-0.5">
+                Placed on {formatDate(order.createdAt)}
+              </p>
             </div>
+
             <div className="flex items-center gap-2">
-              {getStatusBadge(order.status)}
-              {getPaymentBadge(order.paymentStatus)}
+              <OrderStatusBadge status={order.status} />
+              <PaymentStatusBadge status={order.paymentStatus} />
             </div>
           </div>
 
-          <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {/* Item Thumbnails & Amount Details */}
+          <div className="mt-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3 overflow-x-auto py-1">
               {order.items.slice(0, 3).map((item) => (
                 <div key={item.id} className="flex items-center gap-2 shrink-0">
-                  <div className="relative size-12 shrink-0 rounded-lg overflow-hidden bg-[var(--muted-surface)]">
+                  <div className="relative size-12 shrink-0 rounded-xl overflow-hidden bg-[#EEF5F0] border border-[#DDE7DD]">
                     <Image
                       src={item.productImageUrl || "/images/placeholders/plant.svg"}
                       alt={item.productName}
@@ -111,35 +85,38 @@ export function CustomerOrdersList({ orders }: { orders: CustomerOrderListItem[]
                     />
                   </div>
                   <div className="hidden md:block min-w-0">
-                    <p className="text-xs font-bold truncate max-w-[140px]">{item.productName}</p>
-                    <p className="text-xs text-[var(--muted)]">Qty: {item.quantity}</p>
+                    <p className="text-xs font-bold text-[#1F2D22] truncate max-w-[130px]">
+                      {item.productName}
+                    </p>
+                    <p className="text-[11px] text-[#66746A]">Qty: {item.quantity}</p>
                   </div>
                 </div>
               ))}
+
               {order.items.length > 3 && (
-                <span className="text-xs font-semibold text-[var(--muted)]">
+                <span className="text-xs font-semibold text-[#66746A] bg-[#EEF5F0] px-2.5 py-1 rounded-lg border border-[#DDE7DD]">
                   +{order.items.length - 3} more
                 </span>
               )}
             </div>
 
-            <div className="flex items-center justify-between sm:justify-end gap-6">
-              <div className="text-right">
-                <p className="text-xs text-[var(--muted)]">Total Amount</p>
-                <p className="font-bold text-base text-[var(--primary)]">
+            <div className="flex items-center justify-between sm:justify-end gap-5 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#DDE7DD]">
+              <div className="text-left sm:text-right">
+                <p className="text-[11px] text-[#7A877F]">Total Amount</p>
+                <p className="font-bold text-base text-[#1F2D22]">
                   {formatCurrency(order.grandTotal)}
                 </p>
               </div>
 
               <Link
                 href={`/account/orders/${order.id}`}
-                className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--primary)] hover:underline"
+                className="inline-flex h-9 items-center gap-1.5 rounded-[14px] border border-[#DDE7DD] bg-[#FFFFFF] px-3.5 text-xs font-bold text-[#1E5A3A] hover:bg-[#EEF5F0] transition"
               >
-                Details <ChevronRight size={16} />
+                View details <ChevronRight size={14} />
               </Link>
             </div>
           </div>
-        </Card>
+        </div>
       ))}
     </div>
   );

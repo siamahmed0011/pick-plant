@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import { HeroSection } from "@/components/home/hero-section";
 import { FeaturedCategories } from "@/components/home/featured-categories";
 import { RecommendedPlants } from "@/components/home/recommended-plants";
@@ -14,7 +15,10 @@ import { NewsletterSection } from "@/components/home/newsletter-section";
 import { getStorefrontProducts } from "@/lib/storefront/products";
 
 export default async function HomePage() {
-  const products = await getStorefrontProducts();
+  const [session, products] = await Promise.all([
+    auth(),
+    getStorefrontProducts(),
+  ]);
 
   const recommended = products.filter((p) => p.featured).slice(0, 4);
   const popular = products.slice(0, 4);
@@ -22,13 +26,13 @@ export default async function HomePage() {
 
   return (
     <main>
-      <HeroSection />
+      <HeroSection user={session?.user ?? null} />
       <FeaturedCategories />
       <RecommendedPlants items={recommended.length > 0 ? recommended : products.slice(0, 4)} />
       <ComboOffers />
       <PlantFinderBanner />
       <PopularPlants items={popular.length > 0 ? popular : products.slice(0, 4)} />
-      <SeasonalPlants items={seasonal.length > 0 ? seasonal : products.slice(0, 4)} />
+      <SeasonalPlants items={seasonal.length > 0 ? seasonal : products.slice(4, 8)} />
       <AccessoriesSection />
       <BenefitsSection />
       <ServicesSection />

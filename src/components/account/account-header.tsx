@@ -1,13 +1,34 @@
-export function AccountHeader({ name }: { name?: string | null }) {
+export function AccountPageHeader({
+  eyebrow = "MY ACCOUNT",
+  title,
+  subtitle,
+  bengaliSubtitle,
+}: {
+  eyebrow?: string;
+  title: string;
+  subtitle?: string;
+  bengaliSubtitle?: string;
+}) {
   return (
-    <header>
-      <p className="text-sm font-semibold uppercase tracking-wider text-[var(--primary)]">
-        My Account
+    <header className="mb-6">
+      <p className="text-xs font-bold uppercase tracking-widest text-[#1E5A3A]">
+        {eyebrow}
       </p>
-      <h1 className="text-3xl font-bold">Welcome{name ? `, ${name}` : " to Pick Plant"}</h1>
-      <p className="mt-2 text-[var(--muted)]">
-        আপনার অ্যাকাউন্ট, নিরাপত্তা এবং ভবিষ্যৎ অর্ডার সংক্রান্ত তথ্য এখানে পাওয়া যাবে।
-      </p>
+      <h1 className="mt-1 text-[26px] sm:text-[30px] lg:text-[40px] font-bold tracking-tight text-[#1F2D22]">
+        {title}
+      </h1>
+      {bengaliSubtitle && (
+        <p className="mt-1.5 text-sm sm:text-base font-medium text-[#66746A] font-bengali-system">
+          {bengaliSubtitle}
+        </p>
+      )}
+      {subtitle && !bengaliSubtitle && (
+        <p className="mt-1.5 text-sm sm:text-base text-[#66746A] leading-relaxed">
+          {subtitle}
+        </p>
+      )}
     </header>
   );
 }
+
+export { AccountPageHeader as AccountHeader };

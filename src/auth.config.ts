@@ -47,7 +47,8 @@ const authConfig = {
             role: user.role as UserRole,
             passwordChangedAt: user.passwordChangedAt ? user.passwordChangedAt.getTime() : 0,
           };
-        } catch {
+        } catch (error) {
+          console.error("[AuthAuthorize] User authentication lookup error:", error);
           return null;
         }
       },
@@ -56,13 +57,15 @@ const authConfig = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        token.id = user.id;
         token.sub = user.id;
         token.role = (user.role as UserRole | undefined) ?? DEFAULT_USER_ROLE;
         token.pwdChangedAt = (user as { passwordChangedAt?: number }).passwordChangedAt ?? 0;
-      } else if (token.sub) {
+      } else if (token.id || token.sub) {
+        const userId = (token.id as string) || token.sub;
         try {
           const dbUser = await prisma.user.findUnique({
-            where: { id: token.sub },
+            where: { id: userId },
             select: { passwordChangedAt: true, isActive: true },
           });
 
@@ -76,15 +79,17 @@ const authConfig = {
           if (dbPwdChangedAt > tokenPwdChangedAt) {
             return {};
           }
-        } catch {
+        } catch (error) {
+          console.error("[AuthJWT] Database error checking password timestamp:", error);
           // If DB is temporarily unavailable, retain current token
         }
       }
       return token;
     },
     session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
+      const userId = (token.id as string) || token.sub;
+      if (session.user && userId) {
+        session.user.id = userId;
         session.user.role = (token.role as UserRole | undefined) ?? DEFAULT_USER_ROLE;
       }
       return session;

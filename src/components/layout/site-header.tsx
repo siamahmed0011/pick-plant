@@ -127,47 +127,46 @@ export function SiteHeader({ session }: { session?: Session | null }) {
                 </button>
 
                 {dropdownOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-xl ring-1 ring-black/5 animate-in fade-in-50 zoom-in-95">
-                    <div className="border-b border-[var(--border)] px-3 py-2.5">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">Signed in as</p>
-                      <p className="truncate text-sm font-bold text-[var(--text)]">{user.name ?? "Customer"}</p>
-                      {user.email && <p className="truncate text-xs text-[var(--muted)]">{user.email}</p>}
-                    </div>
+                  <div className="absolute right-0 top-full z-50 mt-2 w-[240px] rounded-[18px] border border-[#DDE7DD] bg-[#FFFFFF] p-2 shadow-[0_4px_16px_rgba(0,0,0,0.04)] space-y-1 animate-in fade-in-50 zoom-in-95">
+                    <Link
+                      href="/account"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-sm font-semibold text-[#1F2D22] hover:bg-[#F5FAF6] hover:text-[#1E5A3A] transition"
+                    >
+                      <User size={16} className="text-[#1E5A3A]" /> My Account
+                    </Link>
 
-                    <div className="py-1">
-                      <Link
-                        href="/account"
-                        onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--muted-surface)] hover:text-[var(--primary)] transition"
-                      >
-                        <User size={16} /> My Account
-                      </Link>
+                    <Link
+                      href="/account/orders"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-sm font-semibold text-[#1F2D22] hover:bg-[#F5FAF6] hover:text-[#1E5A3A] transition"
+                    >
+                      <Package size={16} className="text-[#1E5A3A]" /> Orders
+                    </Link>
 
-                      <Link
-                        href="/account#orders"
-                        onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--muted-surface)] hover:text-[var(--primary)] transition"
-                      >
-                        <Package size={16} /> Orders
-                      </Link>
+                    <Link
+                      href="/wishlist"
+                      onClick={() => setDropdownOpen(false)}
+                      className="flex items-center justify-between rounded-[12px] px-3 py-2.5 text-sm font-semibold text-[#1F2D22] hover:bg-[#F5FAF6] hover:text-[#1E5A3A] transition"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <Heart size={16} className="text-[#1E5A3A]" /> Wishlist
+                      </span>
+                      {wishlistItems.length > 0 && (
+                        <span className="grid size-5 place-items-center rounded-full bg-[#1E5A3A] text-[10px] font-bold text-white">
+                          {wishlistItems.length}
+                        </span>
+                      )}
+                    </Link>
 
-                      <Link
-                        href="/wishlist"
-                        onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--muted-surface)] hover:text-[var(--primary)] transition"
-                      >
-                        <Heart size={16} /> Wishlist ({wishlistItems.length})
-                      </Link>
-                    </div>
-
-                    <div className="border-t border-[var(--border)] pt-1">
+                    <div className="pt-1 border-t border-[#DDE7DD]">
                       <button
                         type="button"
                         onClick={() => {
                           setDropdownOpen(false);
                           signOutAction();
                         }}
-                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 transition text-left"
+                        className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition text-left"
                       >
                         <LogOut size={16} /> Sign out
                       </button>

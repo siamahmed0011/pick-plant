@@ -6,12 +6,11 @@ import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { cancelCustomerOrderAction } from "@/app/account/orders/actions";
 import { isCancellableByCustomer } from "@/lib/orders/order-transitions";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { OrderStatusBadge, PaymentStatusBadge } from "@/components/account/status-badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { OrderStatus, PaymentStatus } from "@/generated/prisma/enums";
-import { ArrowLeft, ShoppingBag, Truck, CreditCard, Clock, XCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Clock, CreditCard, Loader2, ShoppingBag, Truck, XCircle } from "lucide-react";
 import { PaymentRetryButton } from "@/components/payments/payment-retry-button";
 import type { OnlinePaymentProvider } from "@/lib/orders/payment-initiation-eligibility";
 
@@ -98,98 +97,96 @@ export function CustomerOrderDetailsView({
 
   return (
     <div className="space-y-6">
+      {/* Back Link */}
       <Link
         href="/account/orders"
-        className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--muted)] hover:text-[var(--primary)] transition"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#66746A] hover:text-[#1E5A3A] transition"
       >
-        <ArrowLeft size={16} /> Back to My Orders
+        <ArrowLeft size={15} /> Back to orders
       </Link>
 
-      <Card className="p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
+      {/* Main Order Header Card */}
+      <div className="rounded-[18px] border border-[#DDE7DD] bg-[#FFFFFF] p-5 sm:p-6 shadow-[0_4px_16px_rgba(0,0,0,0.04)] space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#DDE7DD] pb-5">
           <div>
-            <h1 className="font-mono text-2xl font-bold text-[var(--primary)]">
+            <p className="text-xs font-bold uppercase tracking-wider text-[#7A877F]">Order Details</p>
+            <h1 className="font-mono text-2xl font-bold text-[#1E5A3A] mt-0.5">
               {order.orderNumber}
             </h1>
-            <p className="text-xs text-[var(--muted)]">Placed on {formatDate(order.createdAt)}</p>
+            <p className="text-xs text-[#66746A] mt-1">Placed on {formatDate(order.createdAt)}</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge className="text-sm px-3 py-1 bg-emerald-100 text-emerald-800">
-              {order.status}
-            </Badge>
-            <Badge className="text-sm px-3 py-1 bg-blue-100 text-blue-800">
-              {order.paymentStatus}
-            </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <OrderStatusBadge status={order.status} />
+            <PaymentStatusBadge status={order.paymentStatus} />
 
             {canCancel && (
               <Button
-                variant="danger"
+                variant="outline"
                 size="sm"
                 onClick={() => setShowCancelModal(true)}
-                className="gap-1 text-xs"
+                className="gap-1 text-xs font-semibold border-red-200 text-red-600 hover:bg-red-50 rounded-[14px]"
               >
-                <XCircle size={15} /> Cancel Order
+                <XCircle size={14} /> Cancel order
               </Button>
             )}
           </div>
         </div>
 
         {/* Shipping & Payment Grid */}
-        <div className="mt-6 grid gap-6 sm:grid-cols-2">
-          <div>
-            <h2 className="font-bold text-sm text-[var(--primary)] flex items-center gap-2 mb-2">
-              <Truck size={16} /> Shipping Details
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div className="rounded-[14px] border border-[#DDE7DD] bg-[#EEF5F0]/40 p-4 space-y-1">
+            <h2 className="font-bold text-xs uppercase tracking-wider text-[#1E5A3A] flex items-center gap-1.5 mb-2">
+              <Truck size={15} /> Shipping details
             </h2>
-            <p className="font-bold text-sm">{order.customerName}</p>
-            <p className="text-xs text-[var(--muted)]">{order.customerPhone}</p>
-            <p className="text-xs text-[var(--muted)] mt-1">
+            <p className="font-bold text-sm text-[#1F2D22]">{order.customerName}</p>
+            <p className="text-xs text-[#66746A]">{order.customerPhone}</p>
+            <p className="text-xs text-[#66746A] pt-1 leading-relaxed">
               {order.shippingAddressLine1}
               {order.shippingAddressLine2 ? `, ${order.shippingAddressLine2}` : ""}
-            </p>
-            <p className="text-xs text-[var(--muted)]">
-              {order.shippingCity}, {order.shippingDistrict} {order.shippingPostalCode || ""}
+              {order.shippingArea ? `, ${order.shippingArea}` : ""}, {order.shippingCity}, {order.shippingDistrict}
             </p>
           </div>
 
-          <div>
-            <h2 className="font-bold text-sm text-[var(--primary)] flex items-center gap-2 mb-2">
-              <CreditCard size={16} /> Payment Info
+          <div className="rounded-[14px] border border-[#DDE7DD] bg-[#EEF5F0]/40 p-4 space-y-1">
+            <h2 className="font-bold text-xs uppercase tracking-wider text-[#1E5A3A] flex items-center gap-1.5 mb-2">
+              <CreditCard size={15} /> Payment info
             </h2>
-            <p className="text-sm">
-              <span className="font-semibold">Method:</span>{" "}
+            <p className="text-xs text-[#1F2D22]">
+              <span className="font-semibold">Payment method:</span>{" "}
               {order.paymentMethod || "Cash on Delivery"}
             </p>
-            <p className="text-sm mt-1">
-              <span className="font-semibold">Status:</span> {order.paymentStatus}
+            <p className="text-xs text-[#1F2D22]">
+              <span className="font-semibold">Payment status:</span> {order.paymentStatus}
             </p>
             {paymentRetry && (
-              <PaymentRetryButton
-                className="mt-3"
-                orderId={order.id}
-                provider={paymentRetry.provider}
-                expiresAt={paymentRetry.expiresAt}
-              />
+              <div className="pt-2">
+                <PaymentRetryButton
+                  orderId={order.id}
+                  provider={paymentRetry.provider}
+                  expiresAt={paymentRetry.expiresAt}
+                />
+              </div>
             )}
             {order.customerNote && (
-              <p className="text-xs text-[var(--muted)] mt-2 italic">
+              <p className="text-xs text-[#66746A] pt-2 italic">
                 &quot;{order.customerNote}&quot;
               </p>
             )}
           </div>
         </div>
-      </Card>
+      </div>
 
-      {/* Ordered Items */}
-      <Card className="p-6">
-        <h2 className="font-bold text-lg text-[var(--primary)] flex items-center gap-2 border-b pb-3">
-          <ShoppingBag size={18} /> Order Items
+      {/* Ordered Items Breakdown */}
+      <div className="rounded-[18px] border border-[#DDE7DD] bg-[#FFFFFF] p-5 sm:p-6 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+        <h2 className="font-bold text-base text-[#1F2D22] flex items-center gap-2 border-b border-[#DDE7DD] pb-3 mb-4">
+          <ShoppingBag size={18} className="text-[#1E5A3A]" /> Ordered items ({order.items.length})
         </h2>
 
-        <div className="divide-y">
+        <div className="divide-y divide-[#DDE7DD]">
           {order.items.map((item) => (
-            <div key={item.id} className="py-4 flex items-center gap-4">
-              <div className="relative size-16 shrink-0 rounded-xl overflow-hidden bg-[var(--muted-surface)]">
+            <div key={item.id} className="py-3.5 flex items-center gap-4">
+              <div className="relative size-14 shrink-0 rounded-xl overflow-hidden bg-[#EEF5F0] border border-[#DDE7DD]">
                 <Image
                   src={item.productImageUrl || "/images/placeholders/plant.svg"}
                   alt={item.productName}
@@ -198,33 +195,34 @@ export function CustomerOrderDetailsView({
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm">{item.productName}</p>
-                <p className="text-xs text-[var(--muted)]">SKU: {item.sku}</p>
-                <p className="text-xs text-[var(--muted)] mt-0.5">
+                <p className="font-bold text-sm text-[#1F2D22]">{item.productName}</p>
+                <p className="text-xs text-[#66746A]">SKU: {item.sku}</p>
+                <p className="text-xs text-[#66746A] mt-0.5">
                   Qty: {item.quantity} × {formatCurrency(item.unitPrice)}
                 </p>
               </div>
-              <div className="font-bold text-sm text-[var(--primary)]">
+              <div className="font-bold text-sm text-[#1F2D22]">
                 {formatCurrency(item.lineTotal)}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="border-t pt-4 space-y-2 text-sm max-w-xs ml-auto">
-          <div className="flex justify-between text-[var(--muted)]">
+        {/* Pricing Summary */}
+        <div className="border-t border-[#DDE7DD] pt-4 mt-2 space-y-2 text-xs max-w-xs ml-auto">
+          <div className="flex justify-between text-[#66746A]">
             <span>Subtotal</span>
-            <span className="font-semibold text-black">{formatCurrency(order.subtotal)}</span>
+            <span className="font-semibold text-[#1F2D22]">{formatCurrency(order.subtotal)}</span>
           </div>
 
           {order.couponCode && (order.couponDiscountTotal || 0) > 0 && (
-            <div className="flex justify-between text-emerald-700 font-medium">
-              <span>Coupon Discount ({order.couponCode})</span>
+            <div className="flex justify-between text-emerald-800 font-medium">
+              <span>Coupon ({order.couponCode})</span>
               <span>-{formatCurrency(order.couponDiscountTotal || 0)}</span>
             </div>
           )}
 
-          <div className="flex justify-between text-[var(--muted)]">
+          <div className="flex justify-between text-[#66746A]">
             <div>
               <span>Shipping</span>
               {order.shippingZoneName && (
@@ -233,41 +231,42 @@ export function CustomerOrderDetailsView({
                 </span>
               )}
             </div>
-            <span className="font-semibold text-black">{formatCurrency(order.shippingTotal)}</span>
+            <span className="font-semibold text-[#1F2D22]">{formatCurrency(order.shippingTotal)}</span>
           </div>
-          <div className="flex justify-between text-base font-bold border-t pt-2 text-[var(--primary)]">
+
+          <div className="flex justify-between text-sm font-bold border-t border-[#DDE7DD] pt-2 text-[#1E5A3A]">
             <span>Total</span>
             <span>{formatCurrency(order.grandTotal)}</span>
           </div>
         </div>
-      </Card>
+      </div>
 
-      {/* Status History Timeline */}
-      <Card className="p-6">
-        <h2 className="font-bold text-lg text-[var(--primary)] flex items-center gap-2 border-b pb-3 mb-4">
-          <Clock size={18} /> Status History
+      {/* Order Status History Timeline */}
+      <div className="rounded-[18px] border border-[#DDE7DD] bg-[#FFFFFF] p-5 sm:p-6 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+        <h2 className="font-bold text-base text-[#1F2D22] flex items-center gap-2 border-b border-[#DDE7DD] pb-3 mb-4">
+          <Clock size={18} className="text-[#1E5A3A]" /> Order history timeline
         </h2>
 
-        <div className="relative border-l-2 border-[var(--muted-surface)] ml-3 space-y-6">
+        <div className="relative border-l-2 border-[#DDE7DD] ml-3 space-y-5">
           {order.statusHistory.map((history) => (
             <div key={history.id} className="relative pl-6">
-              <div className="absolute -left-[9px] top-0 size-4 rounded-full bg-[var(--primary)] border-2 border-white" />
+              <div className="absolute -left-[9px] top-1 size-4 rounded-full bg-[#1E5A3A] border-2 border-white" />
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-bold text-sm text-[var(--primary)]">{history.status}</span>
+                <span className="font-bold text-xs text-[#1F2D22]">{history.status}</span>
                 {history.paymentStatus && (
-                  <span className="text-xs text-[var(--muted)]">
+                  <span className="text-[11px] text-[#66746A]">
                     (Payment: {history.paymentStatus})
                   </span>
                 )}
-                <span className="text-xs text-[var(--muted)] ml-auto">
+                <span className="text-xs text-[#66746A] ml-auto">
                   {formatDate(history.createdAt)}
                 </span>
               </div>
-              {history.note && <p className="text-xs text-[var(--muted)] mt-1">{history.note}</p>}
+              {history.note && <p className="text-xs text-[#66746A] mt-1">{history.note}</p>}
             </div>
           ))}
         </div>
-      </Card>
+      </div>
 
       {/* Cancellation Modal */}
       {showCancelModal && (
@@ -277,26 +276,26 @@ export function CustomerOrderDetailsView({
           title="Cancel Order"
         >
           <form onSubmit={handleCancelSubmit} className="space-y-4 pt-2">
-            <p className="text-sm text-[var(--muted)]">
-              Are you sure you want to cancel order <strong className="font-mono">{order.orderNumber}</strong>? Inventory items will be restored automatically.
+            <p className="text-xs text-[#66746A] leading-relaxed">
+              Are you sure you want to cancel order <strong className="font-mono text-[#1F2D22]">{order.orderNumber}</strong>? Inventory items will be restored automatically.
             </p>
 
             {errorMessage && (
-              <p className="text-xs text-red-600 bg-red-50 p-3 rounded-lg border border-red-200">
+              <p className="text-xs text-red-600 bg-red-50 p-3 rounded-[14px] border border-red-200">
                 {errorMessage}
               </p>
             )}
 
             <div>
-              <label htmlFor="cancelReason" className="block text-xs font-semibold mb-1">
-                Reason for cancellation (Optional)
+              <label htmlFor="cancelReason" className="block text-xs font-semibold text-[#1F2D22] mb-1">
+                Reason for cancellation <span className="font-normal text-[#66746A]">(optional)</span>
               </label>
               <textarea
                 id="cancelReason"
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
                 placeholder="e.g. Changed my mind"
-                className="w-full rounded-xl border p-3 text-sm outline-none"
+                className="w-full rounded-[14px] border border-[#DDE7DD] p-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-[#1E5A3A]"
                 rows={3}
               />
             </div>
@@ -307,14 +306,19 @@ export function CustomerOrderDetailsView({
                 variant="ghost"
                 onClick={() => setShowCancelModal(false)}
                 disabled={isSubmitting}
+                className="h-10 text-xs font-semibold rounded-[14px]"
               >
                 Keep Order
               </Button>
-              <Button type="submit" variant="danger" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="h-10 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-[14px]"
+              >
                 {isSubmitting ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" /> Cancelling...
-                  </>
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="size-3.5 animate-spin" /> Cancelling...
+                  </span>
                 ) : (
                   "Confirm Cancellation"
                 )}

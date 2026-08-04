@@ -54,27 +54,27 @@ export function VerificationPanel({ initialToken, initialResult }: Props) {
     <AuthShell
       badgeText="Email Verification"
       title="Verify Account Email"
-      subtitle="Complete your email verification to enable full account features and order notifications."
+      subtitle="Confirm your email address to complete your account setup and access member privileges."
     >
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div className="text-center">
-          <span className={`mx-auto grid size-16 place-items-center rounded-2xl ${
+          <span className={`mx-auto grid size-13 place-items-center rounded-2xl ${
             isSuccess
-              ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
               : isError
-              ? "bg-red-50 text-red-600 border border-red-200"
-              : "bg-[var(--muted-surface)] text-[var(--primary)] border border-[var(--border)]"
+              ? "bg-amber-50 text-amber-700 border border-amber-200"
+              : "bg-[#EEF5F0] text-[#1E5A3A] border border-[#DDE7DD]"
           }`}>
             {isSuccess ? (
-              <CheckCircle2 size={32} />
+              <CheckCircle2 size={26} />
             ) : isError ? (
-              <AlertCircle size={32} />
+              <AlertCircle size={26} />
             ) : (
-              <MailCheck size={32} />
+              <MailCheck size={26} />
             )}
           </span>
 
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-[var(--text)] sm:text-3xl">
+          <h1 className="mt-3 text-[22px] sm:text-[26px] font-bold tracking-tight text-[#1F2D22]">
             {isSuccess
               ? "Email Verified!"
               : isError
@@ -82,16 +82,16 @@ export function VerificationPanel({ initialToken, initialResult }: Props) {
               : "Verify your email"}
           </h1>
 
-          <p className="mt-2 text-sm text-[var(--muted)] leading-relaxed">
+          <p className="mt-1 text-xs text-[#66746A] leading-relaxed max-w-sm mx-auto">
             {isSuccess
-              ? "Your Pick Plant account email has been verified. You can now sign in and enjoy full member privileges."
+              ? "Your Pick Plant account email has been verified. You can now sign in and enjoy full member features."
               : isError
-              ? "This verification link is invalid, expired, or has already been used."
+              ? "This verification link is invalid, expired, or has already been used. Please request a new link below."
               : "Check your inbox for a verification link, or request a new verification email below."}
           </p>
         </div>
 
-        {/* Initial Verification Result Status Notice */}
+        {/* Small Contextual Status Notice */}
         {initialResult && (
           <StatusNotice
             variant={initialResult.ok ? "success" : "error"}
@@ -101,18 +101,17 @@ export function VerificationPanel({ initialToken, initialResult }: Props) {
           </StatusNotice>
         )}
 
-        {/* Missing Token Info */}
         {isMissingToken && (
           <StatusNotice variant="info" role="status">
-            No verification token was provided in the URL. Please enter your email below to request a verification link.
+            No verification token was provided in the link. Please enter your email address below to request a verification link.
           </StatusNotice>
         )}
 
         {/* Resend Verification Email Section */}
         {(!isSuccess || isMissingToken || isError) && (
-          <form className="mt-6 space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--muted-surface)]/50 p-4 sm:p-5" onSubmit={handleResend} noValidate>
+          <form className="mt-4 space-y-3.5 rounded-[18px] border border-[#DDE7DD] bg-[#EEF5F0]/50 p-4" onSubmit={handleResend} noValidate>
             <div>
-              <label className="block text-sm font-semibold text-[var(--text)] mb-2" htmlFor="verification-email">
+              <label className="block text-xs font-bold uppercase tracking-wider text-[#66746A] mb-1.5" htmlFor="verification-email">
                 Request new verification email
               </label>
               <Input
@@ -121,7 +120,7 @@ export function VerificationPanel({ initialToken, initialResult }: Props) {
                 type="email"
                 autoComplete="email"
                 placeholder="you@example.com"
-                className="h-12 rounded-xl text-base sm:text-sm bg-white border-[var(--border)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+                className="h-11 rounded-[14px] text-sm bg-white border-[#DDE7DD] text-[#1F2D22] focus-visible:ring-2 focus-visible:ring-[#1E5A3A]"
                 required
               />
             </div>
@@ -144,36 +143,48 @@ export function VerificationPanel({ initialToken, initialResult }: Props) {
             <Button
               type="submit"
               disabled={pending}
-              className="w-full h-11 font-semibold rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white transition shadow-sm"
+              className="w-full h-11 font-semibold rounded-[14px] bg-[#1E5A3A] hover:bg-[#17482F] text-white transition shadow-xs text-xs sm:text-sm"
             >
               {pending ? (
                 <span className="flex items-center justify-center gap-2">
-                  <LoaderCircle className="animate-spin" size={18} />
-                  Sending link…
+                  <LoaderCircle className="animate-spin" size={16} />
+                  Sending email...
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  <Send size={16} /> Send verification email
+                  <Send size={15} /> Send verification email
                 </span>
               )}
             </Button>
           </form>
         )}
 
-        {/* Clear Action CTAs */}
-        <div className="pt-2 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Link
-            href="/login"
-            className="inline-flex h-12 items-center justify-center rounded-xl bg-[var(--primary)] px-6 font-semibold text-white transition hover:bg-[var(--primary-hover)] shadow-sm"
-          >
-            Sign in to account
-          </Link>
-          <Link
-            href="/account"
-            className="inline-flex h-12 items-center justify-center rounded-xl border border-[var(--border)] px-6 font-semibold text-[var(--text)] transition hover:bg-[var(--muted-surface)]"
-          >
-            My Account
-          </Link>
+        {/* Action Link hierarchy: 1 Primary CTA + 1 Subtle Text Link */}
+        <div className="pt-2 text-center space-y-2">
+          {isSuccess ? (
+            <Link
+              href="/login"
+              className="inline-flex h-11 w-full items-center justify-center rounded-[14px] bg-[#1E5A3A] px-6 text-xs sm:text-sm font-semibold text-white transition hover:bg-[#17482F] shadow-xs"
+            >
+              Sign in to account
+            </Link>
+          ) : (
+            <Link
+              href="/account"
+              className="inline-flex h-11 w-full items-center justify-center rounded-[14px] bg-[#1E5A3A] px-6 text-xs sm:text-sm font-semibold text-white transition hover:bg-[#17482F] shadow-xs"
+            >
+              Go to My Account
+            </Link>
+          )}
+
+          <p>
+            <Link
+              href="/login"
+              className="text-xs font-semibold text-[#66746A] hover:text-[#1E5A3A] hover:underline"
+            >
+              Back to sign in
+            </Link>
+          </p>
         </div>
       </div>
     </AuthShell>

@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, HeartPulse, Leaf, PackageCheck, ShieldCheck, UserCheck, UserPlus } from "lucide-react";
-import { useSession } from "next-auth/react";
 import { Container } from "@/components/shared/container";
 
 const trustItems = [
@@ -12,11 +11,11 @@ const trustItems = [
   { label: "Care Support", Icon: ShieldCheck },
 ];
 
-export function HeroSection() {
-  const sessionContext = useSession();
-  const session = sessionContext?.data;
-  const user = session?.user;
-
+export function HeroSection({
+  user,
+}: {
+  user?: { name?: string | null; email?: string | null; image?: string | null; role?: string } | null;
+}) {
   return (
     <section className="overflow-hidden py-8 sm:py-12 lg:py-16">
       <Container>

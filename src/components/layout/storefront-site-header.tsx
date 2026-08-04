@@ -1,18 +1,12 @@
 "use client";
 
-import { SessionProvider, useSession } from "next-auth/react";
+import type { Session } from "next-auth";
+import { useSession } from "next-auth/react";
 import { SiteHeader } from "@/components/layout/site-header";
 
-function SessionAwareSiteHeader() {
+export function StorefrontSiteHeader({ initialSession }: { initialSession?: Session | null }) {
   const sessionContext = useSession();
-  const session = sessionContext?.data;
-  return <SiteHeader session={session} />;
-}
+  const session = sessionContext?.data ?? initialSession;
 
-export function StorefrontSiteHeader() {
-  return (
-    <SessionProvider refetchOnWindowFocus={false}>
-      <SessionAwareSiteHeader />
-    </SessionProvider>
-  );
+  return <SiteHeader session={session} />;
 }
