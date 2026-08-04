@@ -86,6 +86,25 @@ export async function loginAction(formData: FormData): Promise<AuthActionResult>
   }
 }
 
+function logRegistrationError(stage: string, err: unknown) {
+  const isObj = typeof err === "object" && err !== null;
+  const errorName =
+    err instanceof Error
+      ? err.name
+      : isObj && "name" in err
+        ? String((err as { name: unknown }).name)
+        : "UnknownError";
+  const prismaCode =
+    isObj && "code" in err ? String((err as { code: unknown }).code) : undefined;
+
+  console.error("[Registration Failure]", {
+    stage,
+    errorName,
+    errorType: typeof err,
+    ...(prismaCode ? { prismaCode } : {}),
+  });
+}
+
 export async function registrationAction(formData: FormData): Promise<AuthActionResult> {
   const parsed = registrationSchema.safeParse(formDataToRecord(formData));
   if (!parsed.success) {
@@ -113,21 +132,44 @@ export async function registrationAction(formData: FormData): Promise<AuthAction
     };
   }
 
+  // Stage 1: user_lookup
+  let existingUser = null;
   try {
-    const existingUser = await prisma.user.findUnique({
+    existingUser = await prisma.user.findUnique({
       where: { email: parsed.data.email },
       select: { id: true },
     });
+  } catch (err) {
+    logRegistrationError("user_lookup", err);
+    return {
+      ok: false,
+      message: "We could not create your account right now. Please try again later.",
+    };
+  }
 
-    if (existingUser) {
-      return {
-        ok: false,
-        message: "An account with this email already exists. Try signing in instead.",
-      };
-    }
+  if (existingUser) {
+    return {
+      ok: false,
+      message: "An account with this email already exists. Try signing in instead.",
+    };
+  }
 
-    const passwordHash = await hashPassword(parsed.data.password);
-    const user = await prisma.user.create({
+  // Stage 2: password_hash
+  let passwordHash = "";
+  try {
+    passwordHash = await hashPassword(parsed.data.password);
+  } catch (err) {
+    logRegistrationError("password_hash", err);
+    return {
+      ok: false,
+      message: "We could not create your account right now. Please try again later.",
+    };
+  }
+
+  // Stage 3: user_create
+  let user = null;
+  try {
+    user = await prisma.user.create({
       data: {
         name: parsed.data.name,
         email: parsed.data.email,
@@ -135,33 +177,48 @@ export async function registrationAction(formData: FormData): Promise<AuthAction
         role: "CUSTOMER",
       },
     });
-
-    try {
-      const email = user.email ?? parsed.data.email;
-      const verification = await createEmailVerificationToken(email);
-      if (verification.created && verification.rawToken) {
-        if (process.env.NODE_ENV === "development") {
-          const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-          console.info(
-            `[DEV ONLY] Email verification URL generated for ${email}: ${baseUrl}/verify-email?token=${verification.rawToken}`,
-          );
-        }
-        await sendVerificationEmail(email, verification.rawToken);
-      }
-    } catch (err) {
-      console.error("Failed to send registration verification email:", err);
-    }
-
-    return {
-      ok: true,
-      message: "Your account was created. Please check your email to verify your account.",
-    };
-  } catch {
+  } catch (err) {
+    logRegistrationError("user_create", err);
     return {
       ok: false,
       message: "We could not create your account right now. Please try again later.",
     };
   }
+
+  // Stage 4 & 5: verification_token_create and verification_email_send
+  try {
+    const email = user.email ?? parsed.data.email;
+    let verification = null;
+    try {
+      verification = await createEmailVerificationToken(email);
+    } catch (err) {
+      logRegistrationError("verification_token_create", err);
+    }
+
+    if (verification?.created && verification.rawToken) {
+      if (process.env.NODE_ENV === "development") {
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+        console.info(
+          `[DEV ONLY] Email verification URL generated for ${email}: ${baseUrl}/verify-email?token=${verification.rawToken}`,
+        );
+      }
+      try {
+        const emailResult = await sendVerificationEmail(email, verification.rawToken);
+        if (!emailResult.success) {
+          logRegistrationError("verification_email_send", new Error(emailResult.error));
+        }
+      } catch (err) {
+        logRegistrationError("verification_email_send", err);
+      }
+    }
+  } catch (err) {
+    logRegistrationError("verification_service_unexpected", err);
+  }
+
+  return {
+    ok: true,
+    message: "Your account was created. Please check your email to verify your account.",
+  };
 }
 
 import { createPasswordResetToken, consumePasswordResetToken } from "@/lib/auth/password-reset";
