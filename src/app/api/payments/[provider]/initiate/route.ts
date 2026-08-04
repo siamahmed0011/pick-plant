@@ -903,7 +903,6 @@ async function initiateSSLCommerzPayment(
   });
 }
 
-import { getClientIp } from "@/lib/rate-limit/helpers";
 import { checkPaymentInitiateRateLimit } from "@/lib/rate-limit/rate-limit";
 
 export async function POST(
@@ -926,13 +925,19 @@ export async function POST(
     requestedOrderId =
       typeof orderId === "string" && orderId ? orderId : "unknown";
 
-    const clientIp = getClientIp(request.headers);
     const rateLimitKey = requestedOrderId !== "unknown" ? requestedOrderId : (session?.user?.id || "anonymous");
-    const rateLimit = await checkPaymentInitiateRateLimit(clientIp, rateLimitKey);
+    const rateLimit = await checkPaymentInitiateRateLimit(request.headers, rateLimitKey);
 
-    if (!rateLimit.success) {
+    if (rateLimit.status === "unavailable") {
       return NextResponse.json(
-        { error: "Too many payment initiation attempts. Please try again shortly." },
+        { error: "Security verification is temporarily unavailable. Please try again." },
+        { status: 503 }
+      );
+    }
+
+    if (rateLimit.status === "limited") {
+      return NextResponse.json(
+        { error: `Too many payment initiation attempts. Please try again in ${rateLimit.retryAfterSeconds} seconds.` },
         {
           status: 429,
           headers: {

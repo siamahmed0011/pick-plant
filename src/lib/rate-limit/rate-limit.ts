@@ -3,9 +3,12 @@ import "server-only";
 import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
 import {
+  getClientIpDetails,
   formatRateLimitResponse,
   hashIdentifier,
   normalizeIdentifier,
+  type ClientIpResult,
+  type RateLimitReason,
   type RateLimitResult,
 } from "./helpers";
 
@@ -25,21 +28,46 @@ function getRedisClient(): Redis | null {
   return null;
 }
 
-function handleMissingRedis(): RateLimitResult {
+function handleMissingRedis(
+  headerSource: string | null = null,
+  reason: RateLimitReason = "missing_redis_config"
+): RateLimitResult {
   const isProd = process.env.NODE_ENV === "production";
   if (isProd) {
-    console.error("Rate limiting failed closed: UPSTASH_REDIS_REST_URL or TOKEN missing in production.");
+    console.error("Rate limiting failed closed: UPSTASH_REDIS_REST_URL or TOKEN missing/errored in production.");
     return formatRateLimitResponse(
-      false,
+      "unavailable",
       0,
       0,
-      60000,
-      "Security rate limiting is temporarily unavailable. Please try again later."
+      0,
+      "Security verification is temporarily unavailable. Please try again.",
+      headerSource,
+      reason
     );
   }
 
-  console.warn("[DEV ONLY] Upstash Redis credentials missing. Allowing request in development mode.");
-  return formatRateLimitResponse(true, 100, 100, 0);
+  console.warn("[DEV ONLY] Upstash Redis credentials missing or errored. Allowing request in development mode.");
+  return formatRateLimitResponse("allowed", 100, 100, 0, undefined, headerSource);
+}
+
+export type IpInput =
+  | Headers
+  | Record<string, string | string[] | undefined>
+  | ClientIpResult
+  | string
+  | null;
+
+function resolveIpDetails(input: IpInput): ClientIpResult {
+  if (!input) {
+    return getClientIpDetails({});
+  }
+  if (typeof input === "string") {
+    return { ip: input, headerSource: "explicit" };
+  }
+  if (typeof input === "object" && "ip" in input && "headerSource" in input) {
+    return input as ClientIpResult;
+  }
+  return getClientIpDetails(input as Headers | Record<string, string | string[] | undefined>);
 }
 
 export async function checkRateLimit(
@@ -47,86 +75,107 @@ export async function checkRateLimit(
   keySuffix: string,
   requests: number,
   windowStr: `${number} ${"s" | "m" | "h" | "d"}`,
-  ip: string | null
+  ipInput: IpInput
 ): Promise<RateLimitResult> {
-  if (!ip) {
+  const { ip, headerSource } = resolveIpDetails(ipInput);
+  let resolvedIp = ip;
+
+  if (!resolvedIp) {
     if (process.env.NODE_ENV === "production") {
-      console.error(`Rate limiting failed closed for ${limiterName}: Missing or untrusted IP in production.`);
+      console.error(`Rate limiting unavailable for ${limiterName}: Missing or untrusted IP in production.`);
       return formatRateLimitResponse(
-        false,
+        "unavailable",
         0,
         0,
-        60000,
-        "Unable to verify secure client connection IP."
+        0,
+        "Security verification is temporarily unavailable. Please try again.",
+        headerSource,
+        "missing_ip"
       );
     }
-    ip = "127.0.0.1";
+    resolvedIp = "127.0.0.1";
   }
 
   const redis = getRedisClient();
   if (!redis) {
-    return handleMissingRedis();
+    return handleMissingRedis(headerSource, "missing_redis_config");
   }
 
-  const fullKey = `${ip}:${keySuffix}`;
+  const appNs = process.env.RATE_LIMIT_NAMESPACE?.trim() || "pickplant";
+  const envNs = process.env.VERCEL_ENV?.trim() || process.env.NODE_ENV || "development";
+  const prefix = `${appNs}:${envNs}:${limiterName}`;
+  const fullKey = `${resolvedIp}:${keySuffix}`;
 
   try {
     const limiter = new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(requests, windowStr),
-      prefix: `ratelimit:${limiterName}`,
+      prefix,
     });
 
     const res = await limiter.limit(fullKey);
     const resetMs = Math.max(0, res.reset - Date.now());
 
+    if (res.success) {
+      return formatRateLimitResponse(
+        "allowed",
+        res.limit,
+        res.remaining,
+        resetMs,
+        undefined,
+        headerSource
+      );
+    }
+
     return formatRateLimitResponse(
-      res.success,
+      "limited",
       res.limit,
       res.remaining,
       resetMs,
-      res.success ? undefined : "Too many requests. Please try again later."
+      "Too many attempts. Please try again later.",
+      headerSource,
+      "rate_exceeded"
     );
   } catch (error) {
     console.error(`Rate limiting check error for ${limiterName}:`, error instanceof Error ? error.message : "Unknown error");
-    return handleMissingRedis();
+    return handleMissingRedis(headerSource, "redis_error");
   }
 }
 
-export async function checkLoginRateLimit(ip: string | null, email: string): Promise<RateLimitResult> {
+export async function checkLoginRateLimit(ipInput: IpInput, email: string): Promise<RateLimitResult> {
   const normEmail = normalizeIdentifier(email);
   const keySuffix = hashIdentifier(normEmail);
-  return checkRateLimit("login", keySuffix, 5, "10 m", ip);
+  return checkRateLimit("login", keySuffix, 5, "10 m", ipInput);
 }
 
-export async function checkRegistrationRateLimit(ip: string | null): Promise<RateLimitResult> {
-  return checkRateLimit("register", "attempt", 3, "1 h", ip);
+export async function checkRegistrationRateLimit(ipInput: IpInput): Promise<RateLimitResult> {
+  return checkRateLimit("register", "attempt", 3, "1 h", ipInput);
 }
 
-export async function checkForgotPasswordRateLimit(ip: string | null, email: string): Promise<RateLimitResult> {
+export async function checkForgotPasswordRateLimit(ipInput: IpInput, email: string): Promise<RateLimitResult> {
   const normEmail = normalizeIdentifier(email);
   const keySuffix = hashIdentifier(normEmail);
-  return checkRateLimit("forgot", keySuffix, 3, "1 h", ip);
+  return checkRateLimit("forgot", keySuffix, 3, "1 h", ipInput);
 }
 
-export async function checkResendVerificationRateLimit(ip: string | null, email: string): Promise<RateLimitResult> {
+export async function checkResendVerificationRateLimit(ipInput: IpInput, email: string): Promise<RateLimitResult> {
   const normEmail = normalizeIdentifier(email);
   const keySuffix = hashIdentifier(normEmail);
-  return checkRateLimit("resend", keySuffix, 3, "1 h", ip);
+  return checkRateLimit("resend", keySuffix, 3, "1 h", ipInput);
 }
 
-export async function checkContactRateLimit(ip: string | null): Promise<RateLimitResult> {
-  return checkRateLimit("contact", "submission", 5, "1 h", ip);
+export async function checkContactRateLimit(ipInput: IpInput): Promise<RateLimitResult> {
+  return checkRateLimit("contact", "submission", 5, "1 h", ipInput);
 }
 
-export async function checkCheckoutRateLimit(ip: string | null, userOrKey: string): Promise<RateLimitResult> {
+export async function checkCheckoutRateLimit(ipInput: IpInput, userOrKey: string): Promise<RateLimitResult> {
   const norm = normalizeIdentifier(userOrKey);
   const keySuffix = hashIdentifier(norm);
-  return checkRateLimit("checkout", keySuffix, 10, "10 m", ip);
+  return checkRateLimit("checkout", keySuffix, 10, "10 m", ipInput);
 }
 
-export async function checkPaymentInitiateRateLimit(ip: string | null, identifier: string): Promise<RateLimitResult> {
+export async function checkPaymentInitiateRateLimit(ipInput: IpInput, identifier: string): Promise<RateLimitResult> {
   const norm = normalizeIdentifier(identifier);
   const keySuffix = hashIdentifier(norm);
-  return checkRateLimit("pay_init", keySuffix, 10, "10 m", ip);
+  return checkRateLimit("pay_init", keySuffix, 10, "10 m", ipInput);
 }

@@ -16,7 +16,6 @@ import {
 } from "@/lib/email/email-service";
 
 import { headers } from "next/headers";
-import { getClientIp } from "@/lib/rate-limit/helpers";
 import {
   checkLoginRateLimit,
   checkRegistrationRateLimit,
@@ -40,10 +39,16 @@ export async function loginAction(formData: FormData): Promise<AuthActionResult>
   }
 
   const reqHeaders = await headers();
-  const clientIp = getClientIp(reqHeaders);
-  const rateLimit = await checkLoginRateLimit(clientIp, parsed.data.email);
+  const rateLimit = await checkLoginRateLimit(reqHeaders, parsed.data.email);
 
-  if (!rateLimit.success) {
+  if (rateLimit.status === "unavailable") {
+    return {
+      ok: false,
+      message: "Security verification is temporarily unavailable. Please try again.",
+    };
+  }
+
+  if (rateLimit.status === "limited") {
     return {
       ok: false,
       message: `Too many login attempts. Please try again in ${rateLimit.retryAfterSeconds} seconds.`,
@@ -92,10 +97,16 @@ export async function registrationAction(formData: FormData): Promise<AuthAction
   }
 
   const reqHeaders = await headers();
-  const clientIp = getClientIp(reqHeaders);
-  const rateLimit = await checkRegistrationRateLimit(clientIp);
+  const rateLimit = await checkRegistrationRateLimit(reqHeaders);
 
-  if (!rateLimit.success) {
+  if (rateLimit.status === "unavailable") {
+    return {
+      ok: false,
+      message: "Security verification is temporarily unavailable. Please try again.",
+    };
+  }
+
+  if (rateLimit.status === "limited") {
     return {
       ok: false,
       message: `Too many account creation attempts. Please try again in ${rateLimit.retryAfterSeconds} seconds.`,
@@ -170,10 +181,16 @@ export async function forgotPasswordAction(formData: FormData): Promise<AuthActi
     "If an account with that email address exists, instructions to reset your password have been generated.";
 
   const reqHeaders = await headers();
-  const clientIp = getClientIp(reqHeaders);
-  const rateLimit = await checkForgotPasswordRateLimit(clientIp, parsedEmail.data);
+  const rateLimit = await checkForgotPasswordRateLimit(reqHeaders, parsedEmail.data);
 
-  if (!rateLimit.success) {
+  if (rateLimit.status === "unavailable") {
+    return {
+      ok: false,
+      message: "Security verification is temporarily unavailable. Please try again.",
+    };
+  }
+
+  if (rateLimit.status === "limited") {
     return {
       ok: true,
       message: safeSuccessMessage,
@@ -272,10 +289,16 @@ export async function resendVerificationAction(formData: FormData): Promise<Auth
     "If an account with that email address exists and requires verification, a new verification link has been generated.";
 
   const reqHeaders = await headers();
-  const clientIp = getClientIp(reqHeaders);
-  const rateLimit = await checkResendVerificationRateLimit(clientIp, parsedEmail.data);
+  const rateLimit = await checkResendVerificationRateLimit(reqHeaders, parsedEmail.data);
 
-  if (!rateLimit.success) {
+  if (rateLimit.status === "unavailable") {
+    return {
+      ok: false,
+      message: "Security verification is temporarily unavailable. Please try again.",
+    };
+  }
+
+  if (rateLimit.status === "limited") {
     return {
       ok: true,
       message: safeMessage,

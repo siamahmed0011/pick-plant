@@ -1,5 +1,4 @@
 import { AuthForm } from "@/components/auth/auth-form";
-import { Container } from "@/components/shared/container";
 import { getSafeCallbackUrl } from "@/lib/auth/callback";
 
 export default async function LoginPage({
@@ -10,11 +9,5 @@ export default async function LoginPage({
   const { callbackUrl } = await searchParams;
   const safeCallbackUrl = getSafeCallbackUrl(callbackUrl);
 
-  return (
-    <main className="store-section">
-      <Container>
-        <AuthForm mode="login" callbackUrl={safeCallbackUrl} />
-      </Container>
-    </main>
-  );
+  return <AuthForm mode="login" callbackUrl={safeCallbackUrl} />;
 }

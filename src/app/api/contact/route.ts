@@ -1,17 +1,22 @@
 import { NextResponse } from "next/server";
 import { submitContactMessage } from "@/lib/contact/contact-service";
 import { contactFormSchema } from "@/lib/contact/contact-validation";
-import { getClientIp } from "@/lib/rate-limit/helpers";
 import { checkContactRateLimit } from "@/lib/rate-limit/rate-limit";
 
 export async function POST(request: Request) {
   try {
-    const clientIp = getClientIp(request.headers);
-    const rateLimit = await checkContactRateLimit(clientIp);
+    const rateLimit = await checkContactRateLimit(request.headers);
 
-    if (!rateLimit.success) {
+    if (rateLimit.status === "unavailable") {
       return NextResponse.json(
-        { success: false, error: "Too many contact messages submitted. Please try again later." },
+        { success: false, error: "Security verification is temporarily unavailable. Please try again." },
+        { status: 503 }
+      );
+    }
+
+    if (rateLimit.status === "limited") {
+      return NextResponse.json(
+        { success: false, error: `Too many contact messages submitted. Please try again in ${rateLimit.retryAfterSeconds} seconds.` },
         {
           status: 429,
           headers: {

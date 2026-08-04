@@ -53,7 +53,6 @@ export async function completeCheckoutSubmissionAction() {
 }
 
 import { headers } from "next/headers";
-import { getClientIp } from "@/lib/rate-limit/helpers";
 import { checkCheckoutRateLimit } from "@/lib/rate-limit/rate-limit";
 import { sendOrderConfirmationEmail } from "@/lib/email/email-service";
 import { findExistingOrderBySourceCartId } from "@/lib/orders/order-service";
@@ -75,11 +74,17 @@ export async function placeOrderAction(input: CheckoutInput): Promise<CheckoutAc
     }
 
     const reqHeaders = await headers();
-    const clientIp = getClientIp(reqHeaders);
     const rateLimitKey = session?.user?.id || checkoutIdempotencyKey || "guest";
-    const rateLimit = await checkCheckoutRateLimit(clientIp, rateLimitKey);
+    const rateLimit = await checkCheckoutRateLimit(reqHeaders, rateLimitKey);
 
-    if (!rateLimit.success) {
+    if (rateLimit.status === "unavailable") {
+      return {
+        success: false,
+        error: "Security verification is temporarily unavailable. Please try again.",
+      };
+    }
+
+    if (rateLimit.status === "limited") {
       return {
         success: false,
         error: `Too many checkout attempts. Please try again in ${rateLimit.retryAfterSeconds} seconds.`,

@@ -4,7 +4,8 @@ import { SessionProvider, useSession } from "next-auth/react";
 import { SiteHeader } from "@/components/layout/site-header";
 
 function SessionAwareSiteHeader() {
-  const { data: session } = useSession();
+  const sessionContext = useSession();
+  const session = sessionContext?.data;
   return <SiteHeader session={session} />;
 }
 

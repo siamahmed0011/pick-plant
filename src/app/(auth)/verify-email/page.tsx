@@ -1,5 +1,4 @@
 import { VerificationPanel } from "@/components/auth/verification-panel";
-import { Container } from "@/components/shared/container";
 import { verifyEmailAction } from "@/app/(auth)/actions";
 
 export default async function VerifyEmailPage({
@@ -18,11 +17,5 @@ export default async function VerifyEmailPage({
     initialResult = await verifyEmailAction(token);
   }
 
-  return (
-    <main className="store-section w-full">
-      <Container>
-        <VerificationPanel initialToken={token} initialResult={initialResult} />
-      </Container>
-    </main>
-  );
+  return <VerificationPanel initialToken={token} initialResult={initialResult} />;
 }

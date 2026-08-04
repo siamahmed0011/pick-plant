@@ -8,3 +8,6 @@ out
 .runtime
 .runtime-node.zip
 /src/generated/prisma
+
+.vercel
+.env*
