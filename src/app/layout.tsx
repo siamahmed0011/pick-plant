@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { GoogleTagManager } from "@next/third-parties/google";
 import "./globals.css";
 import "@/styles/animations.css";
 import { AppProviders } from "@/providers/app-providers";
@@ -30,9 +31,11 @@ export const metadata: Metadata = {
     images: ["/images/brand/hero-nursery.jpg"],
   },
 };
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="bn">
+      <GoogleTagManager gtmId="GTM-5X7PXVHF" />
       <body className="font-bengali-system">
         <AppProviders>{children}</AppProviders>
       </body>
