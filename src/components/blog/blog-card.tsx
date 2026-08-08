@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Calendar, Clock, User, ArrowRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/formatters";
 
 export type BlogCardPost = {
@@ -20,9 +19,9 @@ export function BlogCard({ post }: { post: BlogCardPost }) {
   const imageUrl = post.coverImage || "/images/placeholders/blog.svg";
 
   return (
-    <article className="group surface flex flex-col justify-between overflow-hidden rounded-3xl border border-stone-200/90 bg-white transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-emerald-300">
+    <article className="group flex flex-col justify-between overflow-hidden rounded-[18px] border border-[#DDE7DD] bg-[#FFFFFF] shadow-[0_4px_16px_rgba(31,45,34,0.04)] transition duration-300 hover:-translate-y-1 hover:border-[#1E5A3A]/40">
       <div>
-        <div className="relative aspect-[16/9] bg-stone-100 overflow-hidden">
+        <div className="relative aspect-[16/9] bg-[#EEF5F0] overflow-hidden border-b border-[#DDE7DD]">
           <Image
             src={imageUrl}
             alt={post.title}
@@ -30,14 +29,14 @@ export function BlogCard({ post }: { post: BlogCardPost }) {
             className="object-cover transition duration-300 group-hover:scale-105"
           />
           <div className="absolute top-3 left-3">
-            <Badge className="bg-[var(--primary)] text-white text-xs font-semibold shadow-md">
+            <span className="inline-block rounded-md bg-[#EAF5EE] px-2.5 py-1 text-[11px] font-bold text-[#1E5A3A] border border-[#DDE7DD] shadow-xs">
               {post.category}
-            </Badge>
+            </span>
           </div>
         </div>
 
-        <div className="p-6">
-          <div className="flex items-center gap-3 text-xs font-medium text-[var(--muted)] mb-3">
+        <div className="p-5 sm:p-6">
+          <div className="flex items-center gap-3 text-xs font-medium text-[#7A877F] mb-3">
             <span className="flex items-center gap-1">
               <Calendar size={13} />
               {formatDate(post.publishedAt)}
@@ -49,25 +48,25 @@ export function BlogCard({ post }: { post: BlogCardPost }) {
             </span>
           </div>
 
-          <h3 className="text-xl font-bold text-stone-900 group-hover:text-[var(--primary)] transition leading-snug">
+          <h3 className="text-lg sm:text-xl font-bold text-[#1F2D22] group-hover:text-[#1E5A3A] transition leading-snug">
             <Link href={`/blog/${post.slug}`}>{post.title}</Link>
           </h3>
 
-          <p className="mt-3 text-sm text-[var(--muted)] line-clamp-3 leading-relaxed">
+          <p className="mt-2.5 text-xs sm:text-sm text-[#66746A] line-clamp-3 leading-relaxed">
             {post.excerpt}
           </p>
         </div>
       </div>
 
-      <div className="p-6 pt-0 border-t border-stone-100/60 mt-auto flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-stone-700">
-          <User size={14} className="text-emerald-700" />
+      <div className="p-5 sm:p-6 pt-0 border-t border-[#DDE7DD] mt-auto flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-xs font-semibold text-[#1F2D22]">
+          <User size={14} className="text-[#1E5A3A]" />
           {post.authorName}
         </span>
 
         <Link
           href={`/blog/${post.slug}`}
-          className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-[var(--primary)] hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-[#1E5A3A] hover:underline"
         >
           Read Article <ArrowRight size={14} />
         </Link>

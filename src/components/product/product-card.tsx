@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Droplets, Eye, Heart, ShoppingBag, Star, Sun } from "lucide-react";
+import { Droplets, Eye, Heart, ShoppingBag, Sun } from "lucide-react";
 import type { Product } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ProductImage } from "./product-image";
@@ -102,10 +102,13 @@ export function ProductCard({ product }: { product: Product }) {
           )}
         </div>
         <div className="flex flex-1 flex-col p-2 pt-4">
-          <div className="flex items-center gap-1 text-sm text-amber-600">
-            <Star size={15} fill="currentColor" />
-            <span className="font-semibold">4.8</span>
-            <span className="text-[var(--muted)]">(24)</span>
+          <div className="flex items-center justify-between text-xs text-[var(--muted)]">
+            <span className="font-semibold text-[var(--primary)] uppercase tracking-wider text-[11px]">
+              {product.category.name}
+            </span>
+            <span className="rounded-md bg-[var(--muted-surface)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--text-secondary)]">
+              {product.difficulty} Care
+            </span>
           </div>
           <Link
             className="mt-2 line-clamp-1 text-lg font-bold hover:text-[var(--primary)]"

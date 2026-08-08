@@ -22,6 +22,7 @@ export const getStorefrontProducts = cache(async (): Promise<Product[]> => {
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       select: {
         id: true,
+        sku: true,
         name: true,
         bengaliName: true,
         slug: true,
@@ -65,6 +66,7 @@ export const getStorefrontProducts = cache(async (): Promise<Product[]> => {
 
       return {
         id: product.id,
+        sku: product.sku,
         name: product.name,
         bengaliName: product.bengaliName ?? product.name,
         slug: product.slug,

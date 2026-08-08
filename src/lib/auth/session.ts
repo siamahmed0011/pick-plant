@@ -83,14 +83,7 @@ async function resolveSession(): Promise<SessionResolution> {
     ) {
       return { status: "authenticated", session };
     }
-    if (session?.user) {
-      console.error("Authentication session is missing its user identifier.", {
-        name: "InvalidSessionUser",
-        code: "MISSING_USER_ID",
-      });
-      return { status: "auth_service_failure", session: null };
-    }
-    if (hasSessionCookie) {
+    if (hasSessionCookie || Boolean(session?.user)) {
       return { status: "invalid_or_expired", session: null };
     }
     return { status: "guest", session: null };

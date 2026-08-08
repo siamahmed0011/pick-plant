@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { Container } from "@/components/shared/container";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
-import { Badge } from "@/components/ui/badge";
 
 type CareGuideItem = {
   id: string;
@@ -209,20 +208,23 @@ export function PlantCareView() {
   };
 
   return (
-    <main className="py-8 sm:py-12">
+    <main className="py-6 sm:py-8 lg:py-10 bg-[#F7F8F5] min-h-[calc(100vh-14rem)]">
       <Container>
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Plant Care" }]} />
 
-        {/* Hero Banner */}
-        <header className="relative mt-6 overflow-hidden rounded-[2.5rem] bg-stone-900 p-8 sm:p-12 text-white shadow-xl">
+        {/* Hero Banner with Harmonious Brand Green Gradient */}
+        <header
+          className="relative mt-6 overflow-hidden rounded-[24px] p-8 sm:p-12 text-white shadow-[0_12px_40px_rgba(15,77,52,0.12)]"
+          style={{ background: "linear-gradient(110deg, #1E5A3A 0%, #165B40 55%, #0A4733 100%)" }}
+        >
           <div className="max-w-2xl relative z-10">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-300 backdrop-blur-md">
-              <BookOpen size={14} /> Comprehensive Knowledge Base
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/12 border border-white/18 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#A7E3C7] backdrop-blur-md">
+              <BookOpen size={14} className="text-[#A7E3C7]" /> Comprehensive Knowledge Base
             </div>
-            <h1 className="mt-4 text-3xl font-extrabold sm:text-5xl tracking-tight leading-tight">
+            <h1 className="mt-4 text-3xl font-bold sm:text-4xl lg:text-5xl tracking-tight leading-tight text-white">
               Plant Care Guide & Advice
             </h1>
-            <p className="mt-4 text-base sm:text-lg text-stone-300 leading-relaxed">
+            <p className="mt-4 text-base sm:text-lg text-[#DDEBE2] leading-relaxed">
               গাছের সঠিক বেড়ে ওঠার জন্য পানি, আলো, মাটি, সার এবং পোকা দমনের বিস্তারিত ও কার্যকর পরামর্শ পড়ুন।
             </p>
           </div>
@@ -231,13 +233,13 @@ export function PlantCareView() {
         {/* Controls: Search & Category Navigation */}
         <section className="mt-8 space-y-6">
           <div className="relative max-w-xl">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" size={19} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7A877F]" size={19} />
             <input
               type="text"
               placeholder="Search care guides, topics, or symptoms (e.g. watering, yellow leaves)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-2xl border border-stone-200 bg-white py-3.5 pl-12 pr-4 text-sm font-medium shadow-sm transition focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20"
+              className="w-full rounded-[14px] border border-[#DDE7DD] bg-[#FFFFFF] py-3 pl-12 pr-4 text-sm font-medium text-[#1F2D22] placeholder:text-[#7A877F] shadow-[0_4px_16px_rgba(31,45,34,0.04)] transition focus:border-[#1E5A3A] focus:outline-none focus:ring-2 focus:ring-[#1E5A3A]/15"
             />
           </div>
 
@@ -247,10 +249,10 @@ export function PlantCareView() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`shrink-0 rounded-xl px-4 py-2.5 text-xs font-bold transition ${
+                className={`shrink-0 rounded-[14px] px-4 py-2.5 text-xs font-bold transition border ${
                   selectedCategory === cat
-                    ? "bg-[var(--primary)] text-white shadow-md"
-                    : "bg-white text-stone-700 border border-stone-200 hover:bg-stone-50"
+                    ? "bg-[#1E5A3A] text-white border-[#1E5A3A] shadow-xs"
+                    : "bg-[#FFFFFF] text-[#1F2D22] border-[#DDE7DD] hover:bg-[#F5FAF6] hover:border-[#C9DCCC]"
                 }`}
               >
                 {cat}
@@ -269,29 +271,31 @@ export function PlantCareView() {
               return (
                 <article
                   key={guide.id}
-                  className="overflow-hidden rounded-2xl border border-stone-200/90 bg-white shadow-sm transition duration-200 hover:border-stone-300"
+                  className="overflow-hidden rounded-[18px] border border-[#DDE7DD] bg-[#FFFFFF] shadow-[0_4px_16px_rgba(31,45,34,0.04)] transition duration-200 hover:border-[#1E5A3A]/40"
                 >
                   <button
                     onClick={() => toggleGuide(guide.id)}
-                    className="flex w-full items-center justify-between p-6 text-left focus:outline-none"
+                    className="flex w-full items-center justify-between p-5 sm:p-6 text-left focus:outline-none"
                   >
                     <div className="flex items-start gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[var(--primary)]">
+                      <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#EAF5EE] text-[#1E5A3A] border border-[#DDE7DD]">
                         <IconComp size={24} />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <Badge className="bg-stone-100 text-stone-700 font-semibold text-[10px]">
+                          <span className="inline-block rounded-md bg-[#EEF5F0] px-2 py-0.5 text-[10px] font-bold text-[#1E5A3A] border border-[#DDE7DD]">
                             {guide.category}
-                          </Badge>
+                          </span>
                         </div>
-                        <h3 className="mt-1.5 text-xl font-bold text-stone-900">{guide.title}</h3>
-                        <p className="text-xs font-medium text-[var(--muted)]">{guide.subtitle}</p>
+                        <h3 className="mt-1 text-lg sm:text-xl font-bold text-[#1F2D22]">{guide.title}</h3>
+                        <p className="text-xs font-semibold text-[#66746A]">{guide.subtitle}</p>
                       </div>
                     </div>
                     <div
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-600 transition-transform duration-200 ${
-                        isOpen ? "rotate-180 bg-emerald-100 text-emerald-900" : ""
+                      className={`flex size-9 shrink-0 items-center justify-center rounded-xl transition-all duration-200 ${
+                        isOpen
+                          ? "rotate-180 bg-[#1E5A3A] text-white"
+                          : "bg-[#EEF5F0] text-[#1F2D22] hover:bg-[#EAF5EE]"
                       }`}
                     >
                       <ChevronDown size={18} />
@@ -299,19 +303,19 @@ export function PlantCareView() {
                   </button>
 
                   {isOpen && (
-                    <div className="border-t border-stone-100 bg-stone-50/50 p-6 sm:p-8 space-y-6 animate-fadeIn">
-                      <p className="text-base text-stone-800 leading-relaxed font-medium">
+                    <div className="border-t border-[#DDE7DD] bg-[#EEF5F0]/40 p-5 sm:p-8 space-y-6">
+                      <p className="text-sm sm:text-base text-[#1F2D22] leading-relaxed font-medium">
                         {guide.summary}
                       </p>
 
                       <div className="space-y-3">
-                        <h4 className="text-sm font-bold uppercase tracking-wider text-stone-900">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[#66746A]">
                           Key Principles & Instructions:
                         </h4>
                         <ul className="space-y-2">
                           {guide.details.map((detail, idx) => (
-                            <li key={idx} className="flex items-start gap-2.5 text-sm text-stone-700 leading-relaxed">
-                              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--primary)]" />
+                            <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-[#1F2D22] leading-relaxed">
+                              <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#1E5A3A]" />
                               <span>{detail}</span>
                             </li>
                           ))}
@@ -319,13 +323,13 @@ export function PlantCareView() {
                       </div>
 
                       {guide.tips.length > 0 && (
-                        <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/70 p-4 text-emerald-900">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
-                            <Sparkles size={14} /> Pro Care Tip
+                        <div className="rounded-[14px] border border-[#DDE7DD] bg-[#EAF5EE] p-4 text-[#1F2D22]">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-[#1E5A3A] flex items-center gap-1.5">
+                            <Sparkles size={14} className="text-[#1E5A3A]" /> Pro Care Tip
                           </h4>
                           <ul className="mt-2 space-y-1">
                             {guide.tips.map((tip, idx) => (
-                              <li key={idx} className="text-xs font-medium leading-relaxed">
+                              <li key={idx} className="text-xs font-medium leading-relaxed text-[#1F2D22]">
                                 • {tip}
                               </li>
                             ))}
@@ -338,26 +342,26 @@ export function PlantCareView() {
               );
             })
           ) : (
-            <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-12 text-center">
-              <p className="text-base font-semibold text-stone-700">No matching care guides found.</p>
-              <p className="mt-1 text-xs text-[var(--muted)]">Try adjusting your search or selecting &quot;All&quot; categories.</p>
+            <div className="rounded-[18px] border border-dashed border-[#DDE7DD] bg-[#FFFFFF] p-8 sm:p-12 text-center shadow-[0_4px_16px_rgba(31,45,34,0.04)]">
+              <p className="text-base font-bold text-[#1F2D22]">No matching care guides found.</p>
+              <p className="mt-1 text-xs text-[#66746A]">Try adjusting your search or selecting &quot;All&quot; categories.</p>
             </div>
           )}
         </section>
 
         {/* Need Expert Assistance CTA */}
-        <section className="mt-12 rounded-3xl border border-emerald-200 bg-emerald-50/80 p-8 sm:p-10 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <section className="mt-12 rounded-[18px] border border-[#DDE7DD] bg-[#FFFFFF] p-6 sm:p-8 shadow-[0_4px_16px_rgba(31,45,34,0.04)] flex flex-col sm:flex-row items-center justify-between gap-6">
           <div>
-            <h3 className="text-2xl font-bold text-emerald-950">Have a Specific Plant Emergency?</h3>
-            <p className="mt-2 text-sm text-emerald-900/80 max-w-xl">
+            <h3 className="text-xl sm:text-2xl font-bold text-[#1F2D22]">Have a Specific Plant Emergency?</h3>
+            <p className="mt-1 text-xs sm:text-sm text-[#66746A] max-w-xl leading-relaxed">
               গাছের সমস্যা বুঝতে পারছেন না? আমাদের অভিজ্ঞ প্ল্যান্ট বিশেষজ্ঞদের সাথে সরাসরি কথা বলুন বা মেসেজ পাঠান।
             </p>
           </div>
           <Link
             href="/contact"
-            className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-6 font-bold text-white shadow-md transition hover:bg-[var(--primary)]/90"
+            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-[14px] bg-[#1E5A3A] px-6 text-xs sm:text-sm font-semibold text-white transition hover:bg-[#17482F] shadow-xs"
           >
-            Contact Plant Experts <ArrowRight size={17} />
+            Contact Plant Experts <ArrowRight size={16} />
           </Link>
         </section>
       </Container>

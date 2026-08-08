@@ -85,8 +85,8 @@ export function Footer() {
               {siteConfig.address}
             </li>
           </ul>
-          <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-            Secure payment methods coming soon
+          <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-[var(--primary)]">
+            Accepted Payments: COD, Card, bKash & SSLCommerz
           </p>
         </div>
       </Container>

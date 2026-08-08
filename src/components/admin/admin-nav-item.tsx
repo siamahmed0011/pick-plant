@@ -18,17 +18,26 @@ export function AdminNavItem({
       href={href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
+      style={active ? { backgroundColor: "#ffffff", color: "#1E5A3A" } : undefined}
       className={cn(
-        "group flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-white/75 hover:bg-white/10 hover:text-white",
-        active && "bg-white text-[var(--primary)] shadow-sm hover:bg-white hover:text-[var(--primary)]",
+        "group flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
+        active
+          ? "bg-white text-[#1E5A3A] shadow-sm"
+          : "text-white/85 hover:bg-white/10 hover:text-white"
       )}
     >
       <Icon
         size={18}
         aria-hidden="true"
-        className={cn("shrink-0", active ? "text-[var(--primary)]" : "text-white/65")}
+        style={active ? { color: "#1E5A3A" } : undefined}
+        className={cn("shrink-0", active ? "text-[#1E5A3A]" : "text-white/75 group-hover:text-white")}
       />
-      <span>{label}</span>
+      <span
+        style={active ? { color: "#1E5A3A" } : undefined}
+        className={cn(active ? "text-[#1E5A3A]" : "text-white/85 group-hover:text-white")}
+      >
+        {label}
+      </span>
     </Link>
   );
 }

@@ -1,10 +1,10 @@
-import { AdminPlaceholderPage } from "@/components/admin/admin-placeholder-page";
+import { requireAdmin } from "@/lib/auth/guards";
+import { getStoreSettings } from "@/lib/admin/settings-service";
+import { AdminSettingsView } from "@/components/admin/settings/admin-settings-view";
 
-export default function AdminSettingsPage() {
-  return (
-    <AdminPlaceholderPage
-      title="Settings"
-      description="Store configuration will be implemented in a later phase."
-    />
-  );
+export default async function AdminSettingsPage() {
+  await requireAdmin("/admin/settings");
+  const settings = await getStoreSettings();
+
+  return <AdminSettingsView initialSettings={settings} />;
 }

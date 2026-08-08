@@ -40,13 +40,15 @@ export default async function AccountOverviewPage() {
 
   let ordersCount = 0;
   let addressCount = 0;
+  let wishlistCount = 0;
   let latestOrder = null;
 
   if (userContext) {
     try {
-      const [countOrders, countAddresses, recentOrder] = await Promise.all([
+      const [countOrders, countAddresses, countWishlist, recentOrder] = await Promise.all([
         prisma.order.count({ where: { userId: userContext.id } }),
         prisma.address.count({ where: { userId: userContext.id } }),
+        prisma.wishlist.count({ where: { userId: userContext.id } }),
         prisma.order.findFirst({
           where: { userId: userContext.id },
           orderBy: { createdAt: "desc" },
@@ -63,6 +65,7 @@ export default async function AccountOverviewPage() {
 
       ordersCount = countOrders;
       addressCount = countAddresses;
+      wishlistCount = countWishlist;
       latestOrder = recentOrder;
     } catch (error) {
       console.error("[AccountOverview] Database query error:", error);
@@ -129,7 +132,7 @@ export default async function AccountOverviewPage() {
 
         <div className="rounded-[18px] border border-[#DDE7DD] bg-[#FFFFFF] p-4 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
           <p className="text-xs font-semibold text-[#66746A]">Saved items</p>
-          <p className="mt-1 text-2xl sm:text-3xl font-bold text-[#1E5A3A]">Wishlist</p>
+          <p className="mt-1 text-2xl sm:text-3xl font-bold text-[#1E5A3A]">{wishlistCount}</p>
           <p className="mt-0.5 text-[11px] text-[#7A877F]">Saved plants</p>
         </div>
 

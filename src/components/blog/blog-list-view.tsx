@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Search, BookOpen, Calendar, Clock, User, ArrowRight } from "lucide-react";
 import { Container } from "@/components/shared/container";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
-import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/formatters";
 import { BlogCard, type BlogCardPost } from "./blog-card";
 
@@ -34,20 +33,23 @@ export function BlogListView({ posts }: { posts: BlogCardPost[] }) {
   const gridPosts = filteredPosts;
 
   return (
-    <main className="py-8 sm:py-12">
+    <main className="py-6 sm:py-8 lg:py-10 bg-[#F7F8F5] min-h-[calc(100vh-14rem)]">
       <Container>
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Blog" }]} />
 
         {/* Hero Header */}
-        <header className="relative mt-6 overflow-hidden rounded-[2.5rem] bg-stone-900 p-8 sm:p-12 text-white shadow-xl">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-300 backdrop-blur-md">
-              <BookOpen size={14} /> Gardening & Plant Life Journal
+        <header
+          className="relative mt-6 overflow-hidden rounded-[24px] p-8 sm:p-12 text-white shadow-[0_12px_40px_rgba(15,77,52,0.12)]"
+          style={{ background: "linear-gradient(110deg, #1E5A3A 0%, #165B40 55%, #0A4733 100%)" }}
+        >
+          <div className="max-w-2xl relative z-10">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/12 border border-white/18 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#A7E3C7] backdrop-blur-md">
+              <BookOpen size={14} className="text-[#A7E3C7]" /> Gardening & Plant Life Journal
             </div>
-            <h1 className="mt-4 text-3xl font-extrabold sm:text-5xl tracking-tight leading-tight">
+            <h1 className="mt-4 text-3xl font-bold sm:text-4xl lg:text-5xl tracking-tight leading-tight text-white">
               Pick Plant Care Blog & Guides
             </h1>
-            <p className="mt-4 text-base sm:text-lg text-stone-300 leading-relaxed">
+            <p className="mt-4 text-base sm:text-lg text-[#DDEBE2] leading-relaxed">
               গাছ পালন, ইনডোর সাজসজ্জা, পানি ও মাটি নির্বাচন এবং শহুরে বাগান গড়ার সেরা গাইডলাইন ও অভিজ্ঞদের টিপস পড়ুন।
             </p>
           </div>
@@ -55,9 +57,9 @@ export function BlogListView({ posts }: { posts: BlogCardPost[] }) {
 
         {/* Featured Article Banner (if no active search/filter) */}
         {featuredPost && selectedCategory === "All" && searchQuery === "" && (
-          <section className="mt-10 overflow-hidden rounded-[2.5rem] border border-stone-200 bg-white shadow-md transition duration-300 hover:shadow-xl">
+          <section className="mt-10 overflow-hidden rounded-[18px] border border-[#DDE7DD] bg-[#FFFFFF] shadow-[0_4px_16px_rgba(31,45,34,0.04)] transition duration-300 hover:border-[#1E5A3A]/40">
             <div className="grid lg:grid-cols-2 items-center">
-              <div className="relative aspect-[16/10] bg-stone-100 lg:aspect-auto lg:h-full">
+              <div className="relative aspect-[16/10] bg-[#EEF5F0] lg:aspect-auto lg:h-full border-b lg:border-b-0 lg:border-r border-[#DDE7DD]">
                 <Image
                   src={featuredPost.coverImage || "/images/placeholders/blog.svg"}
                   alt={featuredPost.title}
@@ -65,17 +67,17 @@ export function BlogListView({ posts }: { posts: BlogCardPost[] }) {
                   className="object-cover"
                 />
                 <div className="absolute top-4 left-4">
-                  <Badge className="bg-[var(--primary)] text-white text-xs font-bold shadow-md">
+                  <span className="inline-flex items-center rounded-full bg-[#1E5A3A] px-3 py-1 text-xs font-bold text-white shadow-xs">
                     Featured Article
-                  </Badge>
+                  </span>
                 </div>
               </div>
 
-              <div className="p-8 sm:p-12">
-                <div className="flex items-center gap-3 text-xs font-medium text-[var(--muted)]">
-                  <Badge className="bg-emerald-50 text-emerald-900 border border-emerald-200">
+              <div className="p-6 sm:p-10">
+                <div className="flex items-center gap-3 text-xs font-medium text-[#7A877F]">
+                  <span className="inline-block rounded-md bg-[#EAF5EE] px-2.5 py-1 text-[11px] font-bold text-[#1E5A3A] border border-[#DDE7DD]">
                     {featuredPost.category}
-                  </Badge>
+                  </span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
                     <Calendar size={13} /> {formatDate(featuredPost.publishedAt)}
@@ -86,23 +88,23 @@ export function BlogListView({ posts }: { posts: BlogCardPost[] }) {
                   </span>
                 </div>
 
-                <h2 className="mt-4 text-2xl sm:text-3xl font-bold text-stone-900 hover:text-[var(--primary)] transition">
+                <h2 className="mt-4 text-2xl sm:text-3xl font-bold text-[#1F2D22] hover:text-[#1E5A3A] transition">
                   <Link href={`/blog/${featuredPost.slug}`}>{featuredPost.title}</Link>
                 </h2>
 
-                <p className="mt-4 text-base text-[var(--muted)] leading-relaxed">
+                <p className="mt-3 text-sm sm:text-base text-[#66746A] leading-relaxed">
                   {featuredPost.excerpt}
                 </p>
 
-                <div className="mt-8 flex items-center justify-between pt-6 border-t border-stone-100">
-                  <span className="flex items-center gap-1.5 text-xs font-semibold text-stone-700">
-                    <User size={15} className="text-emerald-700" />
+                <div className="mt-8 flex items-center justify-between pt-5 border-t border-[#DDE7DD]">
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-[#1F2D22]">
+                    <User size={15} className="text-[#1E5A3A]" />
                     {featuredPost.authorName}
                   </span>
 
                   <Link
                     href={`/blog/${featuredPost.slug}`}
-                    className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-md transition hover:bg-[var(--primary)]/90"
+                    className="inline-flex h-10 items-center gap-2 rounded-[14px] bg-[#1E5A3A] px-5 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#17482F] shadow-xs"
                   >
                     Read Story <ArrowRight size={15} />
                   </Link>
@@ -120,10 +122,10 @@ export function BlogListView({ posts }: { posts: BlogCardPost[] }) {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`shrink-0 rounded-xl px-4 py-2.5 text-xs font-bold transition ${
+                className={`shrink-0 rounded-[14px] px-4 py-2.5 text-xs font-bold transition border ${
                   selectedCategory === cat
-                    ? "bg-[var(--primary)] text-white shadow-md"
-                    : "bg-white text-stone-700 border border-stone-200 hover:bg-stone-50"
+                    ? "bg-[#1E5A3A] text-white border-[#1E5A3A] shadow-xs"
+                    : "bg-[#FFFFFF] text-[#1F2D22] border-[#DDE7DD] hover:bg-[#F5FAF6] hover:border-[#C9DCCC]"
                 }`}
               >
                 {cat}
@@ -133,13 +135,13 @@ export function BlogListView({ posts }: { posts: BlogCardPost[] }) {
 
           {/* Search Bar */}
           <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" size={17} />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7A877F]" size={17} />
             <input
               type="text"
               placeholder="Search articles..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-stone-200 bg-white py-2.5 pl-10 pr-4 text-xs font-medium focus:border-[var(--primary)] focus:outline-none shadow-sm"
+              className="w-full rounded-[14px] border border-[#DDE7DD] bg-[#FFFFFF] py-2.5 pl-10 pr-4 text-xs font-medium text-[#1F2D22] placeholder:text-[#7A877F] focus:border-[#1E5A3A] focus:ring-2 focus:ring-[#1E5A3A]/15 focus:outline-none shadow-[0_4px_16px_rgba(31,45,34,0.04)] transition"
             />
           </div>
         </section>
@@ -147,15 +149,15 @@ export function BlogListView({ posts }: { posts: BlogCardPost[] }) {
         {/* Articles Grid */}
         <section className="mt-8">
           {gridPosts.length > 0 ? (
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {gridPosts.map((post) => (
                 <BlogCard key={post.id} post={post} />
               ))}
             </div>
           ) : (
-            <div className="rounded-3xl border border-dashed border-stone-300 bg-stone-50 p-12 text-center">
-              <p className="text-base font-semibold text-stone-800">No articles match your criteria.</p>
-              <p className="mt-1 text-xs text-[var(--muted)]">Try adjusting your search terms or category selection.</p>
+            <div className="rounded-[18px] border border-[#DDE7DD] bg-[#FFFFFF] p-8 sm:p-12 text-center shadow-[0_4px_16px_rgba(31,45,34,0.04)]">
+              <p className="text-base font-bold text-[#1F2D22]">No articles match your criteria.</p>
+              <p className="mt-1 text-xs text-[#66746A]">Try adjusting your search terms or category selection.</p>
             </div>
           )}
         </section>

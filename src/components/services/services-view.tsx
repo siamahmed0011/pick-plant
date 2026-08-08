@@ -149,15 +149,18 @@ export function ServicesView() {
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Services" }]} />
 
         {/* Hero Header */}
-        <header className="relative mt-6 overflow-hidden rounded-[2.5rem] bg-gradient-to-r from-[var(--primary)] to-emerald-950 p-8 sm:p-12 text-white shadow-xl">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-200 backdrop-blur-md">
+        <header
+          className="relative mt-6 overflow-hidden rounded-[24px] p-8 sm:p-12 text-white shadow-[0_12px_40px_rgba(15,77,52,0.12)]"
+          style={{ background: "linear-gradient(110deg, #1E5A3A 0%, #165B40 55%, #0A4733 100%)" }}
+        >
+          <div className="max-w-2xl relative z-10">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/12 border border-white/18 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#A7E3C7] backdrop-blur-md">
               Professional Plant Services
             </div>
-            <h1 className="mt-4 text-3xl font-extrabold sm:text-5xl tracking-tight">
+            <h1 className="mt-4 text-3xl font-bold sm:text-4xl lg:text-5xl tracking-tight leading-tight text-white">
               Expert Gardening & Care Services
             </h1>
-            <p className="mt-4 text-base sm:text-lg text-emerald-100/90 leading-relaxed">
+            <p className="mt-4 text-base sm:text-lg text-[#DDEBE2] leading-relaxed">
               আপনার বাসা, বারান্দা বা অফিসে গাছের স্বাস্থ্য রক্ষা, নতুন বাগান তৈরি এবং প্রফেশনাল পরিচর্যার জন্য আমাদের সেবা নিন।
             </p>
           </div>
@@ -171,48 +174,48 @@ export function ServicesView() {
             return (
               <div
                 key={service.id}
-                className="group surface flex flex-col justify-between overflow-hidden rounded-3xl border border-stone-200/90 bg-white p-7 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-emerald-300"
+                className="group surface flex flex-col justify-between overflow-hidden rounded-[18px] border border-[#DDE7DD] bg-white p-7 transition duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#1E5A3A]/40"
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-[var(--primary)] group-hover:bg-[var(--primary)] group-hover:text-white transition duration-300">
-                      <IconComp size={28} />
+                    <div className="flex size-14 items-center justify-center rounded-2xl bg-[#EAF5EE] text-[#1E5A3A] group-hover:bg-[#1E5A3A] group-hover:text-white transition duration-300 border border-[#DDE7DD]/60">
+                      <IconComp size={26} />
                     </div>
-                    <Badge className="bg-stone-100 text-stone-700 font-semibold text-xs border border-stone-200">
+                    <Badge className="bg-[#EEF5F0] text-[#1F2D22] font-semibold text-xs border border-[#DDE7DD]">
                       {service.duration}
                     </Badge>
                   </div>
 
-                  <h3 className="mt-6 text-2xl font-bold text-stone-900 leading-snug">
+                  <h3 className="mt-6 text-2xl font-bold text-[#1F2D22] leading-snug">
                     {service.title}
                   </h3>
-                  <p className="text-sm font-semibold text-[var(--primary)] mt-1">
+                  <p className="text-sm font-semibold text-[#1E5A3A] mt-1">
                     {service.bengaliTitle}
                   </p>
-                  <p className="mt-3 text-sm text-[var(--muted)] leading-relaxed">
+                  <p className="mt-3 text-sm text-[#66746A] leading-relaxed">
                     {service.description}
                   </p>
 
-                  <div className="mt-6 pt-5 border-t border-stone-100 space-y-2.5">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900">
+                  <div className="mt-6 pt-5 border-t border-[#DDE7DD] space-y-2.5">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#1F2D22]">
                       What&apos;s Included:
                     </h4>
                     {service.includes.map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-xs font-medium text-stone-700">
-                        <Check size={15} className="shrink-0 text-emerald-600 mt-0.5" />
+                      <div key={idx} className="flex items-start gap-2 text-xs font-medium text-[#1F2D22]">
+                        <Check size={15} className="shrink-0 text-[#1E5A3A] mt-0.5" />
                         <span>{item}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="mt-8 pt-5 border-t border-stone-100">
+                <div className="mt-8 pt-5 border-t border-[#DDE7DD]">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-1.5 text-xs text-[var(--muted)] font-medium">
-                      <Tag size={14} className="text-emerald-700" />
+                    <div className="flex items-center gap-1.5 text-xs text-[#66746A] font-medium">
+                      <Tag size={14} className="text-[#1E5A3A]" />
                       <span>Pricing</span>
                     </div>
-                    <span className="text-lg font-bold text-stone-900">
+                    <span className="text-lg font-bold text-[#1F2D22]">
                       {service.startingPrice}
                     </span>
                   </div>
@@ -221,7 +224,7 @@ export function ServicesView() {
                     href={`/contact?inquiryType=Service+Inquiry&subject=${encodeURIComponent(
                       service.inquirySubject
                     )}`}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-stone-900 py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[var(--primary)] shadow-sm"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[14px] bg-[#1E5A3A] py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#17482F] shadow-xs"
                   >
                     Inquire For Service <ArrowRight size={15} />
                   </Link>
@@ -232,18 +235,18 @@ export function ServicesView() {
         </section>
 
         {/* Custom Project CTA */}
-        <section className="mt-14 rounded-3xl border border-stone-200 bg-white p-8 sm:p-12 shadow-sm text-center">
+        <section className="mt-14 rounded-[18px] border border-[#DDE7DD] bg-white p-8 sm:p-12 shadow-sm text-center">
           <div className="max-w-2xl mx-auto">
-            <h3 className="text-2xl sm:text-3xl font-bold text-stone-900">
+            <h3 className="text-2xl sm:text-3xl font-bold text-[#1F2D22]">
               Need a Custom Landscaping or Office Solution?
             </h3>
-            <p className="mt-3 text-sm sm:text-base text-[var(--muted)] leading-relaxed">
+            <p className="mt-3 text-sm sm:text-base text-[#66746A] leading-relaxed">
               বিশেষ কোনো প্রকল্প বা বড় পরিসরে বাগান তৈরির পরিকল্পনা থাকলে সরাসরি আমাদের কাস্টম সাপোর্ট টিমের সাথে কথা বলুন।
             </p>
             <div className="mt-6 flex justify-center gap-4">
               <Link
                 href="/contact?inquiryType=Custom+Project"
-                className="inline-flex items-center gap-2 rounded-xl bg-[var(--primary)] px-6 py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-[var(--primary)]/90"
+                className="inline-flex items-center gap-2 rounded-[14px] bg-[#1E5A3A] px-6 py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-[#17482F]"
               >
                 Request Custom Quote <ArrowRight size={16} />
               </Link>

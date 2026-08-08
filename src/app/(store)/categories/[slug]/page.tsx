@@ -37,7 +37,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         <section className="relative mt-6 overflow-hidden rounded-[2rem] bg-[var(--primary)] text-white">
           <div className="grid min-h-72 items-center lg:grid-cols-[1fr_20rem]">
             <div className="p-7 sm:p-10">
-              <p className="text-sm font-bold uppercase tracking-[.18em] text-[var(--secondary)]">
+              <p className="text-sm font-bold uppercase tracking-[.18em] text-[#A7E3C7]">
                 Plant collection
               </p>
               <h1 className="mt-3 text-3xl font-bold sm:text-5xl">{category.name}</h1>

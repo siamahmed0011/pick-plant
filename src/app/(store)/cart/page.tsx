@@ -5,7 +5,6 @@ import { useCart } from "@/providers/cart-provider";
 import { Container } from "@/components/shared/container";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ProductImage } from "@/components/product/product-image";
-import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/formatters";
 export default function CartPage() {
   const { items, removeItem, updateQuantity, clearCart, subtotal } = useCart();
@@ -78,9 +77,12 @@ export default function CartPage() {
               <span>Delivery</span>
               <span>Calculated later</span>
             </p>
-            <Button className="mt-6 w-full">
-              <Link href="/checkout">Checkout</Link>
-            </Button>
+            <Link
+              href="/checkout"
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--primary)] h-11 px-5 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[var(--primary-hover)] hover:shadow-md"
+            >
+              Checkout
+            </Link>
             <button
               type="button"
               onClick={clearCart}

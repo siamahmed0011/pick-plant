@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, HeartPulse, Leaf, PackageCheck, ShieldCheck, UserCheck, UserPlus } from "lucide-react";
+import { ArrowRight, HeartPulse, Leaf, PackageCheck, ShieldCheck, UserPlus } from "lucide-react";
 import { Container } from "@/components/shared/container";
 
 const trustItems = [
@@ -62,23 +62,6 @@ export function HeroSection({
               >
                 Find My Plant
               </Link>
-
-              {/* Guest Account CTA in Hero Section */}
-              {!user ? (
-                <Link
-                  className="inline-flex h-12 items-center gap-2 rounded-xl bg-[var(--accent)] px-5 font-semibold text-white transition hover:bg-[#c47c3a] shadow-sm"
-                  href="/login"
-                >
-                  <UserPlus size={18} /> Sign in
-                </Link>
-              ) : (
-                <Link
-                  className="inline-flex h-12 items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-5 font-semibold text-white transition hover:bg-white/20"
-                  href="/account"
-                >
-                  <UserCheck size={18} /> Account Dashboard
-                </Link>
-              )}
             </div>
 
             <div className="mt-10 grid grid-cols-3 gap-3 border-t border-white/15 pt-6">
@@ -105,7 +88,10 @@ export function HeroSection({
               priority
               className="object-cover"
             />
-            <HeartPulse className="absolute right-6 top-6 text-[var(--primary)]" />
+            <div className="absolute right-6 top-6 flex items-center gap-2 rounded-full bg-white/90 px-3.5 py-1.5 text-xs font-bold text-[var(--primary)] shadow-md backdrop-blur-sm">
+              <HeartPulse size={16} className="text-[var(--primary)] shrink-0" />
+              <span>Healthy & Fresh</span>
+            </div>
           </div>
         </div>
       </Container>

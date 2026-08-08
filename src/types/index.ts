@@ -9,6 +9,7 @@ export interface Category {
 }
 export interface Product {
   id: string;
+  sku?: string;
   name: string;
   bengaliName: string;
   slug: string;

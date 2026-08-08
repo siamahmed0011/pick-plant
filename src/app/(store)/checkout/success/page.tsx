@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   AlertCircle,
   CheckCircle2,
@@ -14,7 +13,7 @@ import {
   CreditCard,
   XCircle,
 } from "lucide-react";
-import { OrderStatus, PaymentStatus } from "@/generated/prisma/enums";
+import { OrderStatus, PaymentProvider, PaymentStatus } from "@/generated/prisma/enums";
 import { evaluatePaymentInitiationEligibility } from "@/lib/orders/payment-initiation-eligibility";
 import { PaymentRetryButton } from "@/components/payments/payment-retry-button";
 
@@ -79,6 +78,15 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
               label: "Payment Failed",
               icon: AlertCircle,
               className: "border-red-200 bg-red-50/40 text-red-700",
+            }
+          : order.paymentProvider === PaymentProvider.MANUAL
+          ? {
+              title: "Payment verification pending",
+              message:
+                "Thank you for submitting your Send Money reference. Our team will verify your transaction ID shortly.",
+              label: "Verification Pending",
+              icon: Clock,
+              className: "border-[#DDE7DD] bg-[#EAF5EE] text-[#1E5A3A]",
             }
           : {
               title: "Payment pending",
@@ -201,15 +209,17 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-          <Link href="/account/orders">
-            <Button variant="outline" className="w-full sm:w-auto">
-              View Order History
-            </Button>
+          <Link
+            href="/account/orders"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-[var(--primary)] px-5 text-sm font-semibold text-[var(--primary)] transition hover:-translate-y-0.5 hover:bg-[var(--muted-surface)] w-full sm:w-auto"
+          >
+            View Order History
           </Link>
-          <Link href="/plants">
-            <Button variant="primary" className="w-full sm:w-auto">
-              Continue Shopping
-            </Button>
+          <Link
+            href="/plants"
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-[var(--primary)] px-5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[var(--primary-hover)] w-full sm:w-auto"
+          >
+            Continue Shopping
           </Link>
         </div>
       </div>

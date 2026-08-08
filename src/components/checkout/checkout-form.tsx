@@ -24,6 +24,8 @@ import {
 } from "@/lib/orders/payment-initiation-eligibility";
 import { requestOnlinePaymentRedirect } from "@/lib/payments/client-payment-initiation";
 import { PaymentRetryButton } from "@/components/payments/payment-retry-button";
+import { ManualPaymentSelector } from "./manual-payment-selector";
+import type { MobileBankingChannelId } from "@/config/payment-channels";
 
 type Props = {
   availableOnlineProviders: OnlinePaymentProvider[];
@@ -182,9 +184,18 @@ export function CheckoutForm({
       return;
     }
 
-    if (formData.paymentMethod === "MANUAL" && !formData.manualTransactionRef.trim()) {
-      setErrorMessage("Please enter your transaction reference number for manual payment.");
-      return;
+    if (formData.paymentMethod === "MANUAL") {
+      const ref = formData.manualTransactionRef.trim();
+      if (!ref) {
+        setFieldErrors({ manualTransactionRef: "Please enter your Transaction ID or reference number." });
+        setErrorMessage("Please enter your Transaction ID or reference number for Send Money payment.");
+        return;
+      }
+      if (ref.length < 6 || !/^[A-Za-z0-9_-]{6,30}$/.test(ref)) {
+        setFieldErrors({ manualTransactionRef: "Transaction ID must be at least 6 alphanumeric characters (e.g. 9B87A6C5)." });
+        setErrorMessage("Transaction ID must be at least 6 alphanumeric characters (e.g. 9B87A6C5).");
+        return;
+      }
     }
 
     const payload: CheckoutInput = {
@@ -305,8 +316,11 @@ export function CheckoutForm({
         <ShoppingBag className="mx-auto size-12 text-[var(--muted)]" />
         <h2 className="mt-4 text-2xl font-bold">Your cart is empty</h2>
         <p className="mt-2 text-[var(--muted)]">Add some plants to your cart before checking out.</p>
-        <Link href="/plants" className="mt-6 inline-block">
-          <Button variant="primary">Browse Plants</Button>
+        <Link
+          href="/plants"
+          className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-6 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[var(--primary-hover)]"
+        >
+          Browse Plants
         </Link>
       </Card>
     );
@@ -512,48 +526,34 @@ export function CheckoutForm({
                 className="size-4 text-[var(--primary)]"
               />
               <div>
-                <p className="font-bold">Mobile Banking / Bank Transfer (Manual)</p>
-                <p className="text-xs text-[var(--muted)]">Pay via bKash, Nagad, Rocket, or Bank and provide reference</p>
+                <p className="font-bold">Send Money (bKash, Nagad, Rocket, Bank Transfer)</p>
+                <p className="text-xs text-[var(--muted)]">
+                  Manual Send Money payment to our personal wallet or bank account
+                </p>
               </div>
             </label>
 
             {/* Manual Payment Inputs */}
             {formData.paymentMethod === "MANUAL" && (
-              <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-4 space-y-3">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1">
-                      Payment Channel
-                    </label>
-                    <select
-                      name="manualPaymentChannel"
-                      value={formData.manualPaymentChannel}
-                      onChange={handleChange}
-                      className="w-full rounded-lg border border-stone-200 bg-white p-2 text-xs focus:outline-none"
-                    >
-                      <option value="bKash">bKash (01700000000)</option>
-                      <option value="Nagad">Nagad (01700000000)</option>
-                      <option value="Rocket">Rocket (01700000000)</option>
-                      <option value="Bank Transfer">Bank Transfer (Brac Bank)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1">
-                      Transaction ID / Ref <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      name="manualTransactionRef"
-                      value={formData.manualTransactionRef}
-                      onChange={handleChange}
-                      placeholder="e.g. 9B87A6C5"
-                      required
-                    />
-                  </div>
-                </div>
-                <p className="text-[11px] text-stone-500">
-                  Please send payment to our official merchant wallet, then enter your transaction ID above.
-                </p>
-              </div>
+              <ManualPaymentSelector
+                selectedChannel={(formData.manualPaymentChannel as MobileBankingChannelId) || "bKash"}
+                onSelectChannel={(ch) =>
+                  setFormData((prev) => ({ ...prev, manualPaymentChannel: ch }))
+                }
+                transactionRef={formData.manualTransactionRef}
+                onChangeTransactionRef={(val) => {
+                  setFormData((prev) => ({ ...prev, manualTransactionRef: val }));
+                  if (fieldErrors.manualTransactionRef) {
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.manualTransactionRef;
+                      return next;
+                    });
+                  }
+                }}
+                grandTotal={grandTotal}
+                error={fieldErrors.manualTransactionRef}
+              />
             )}
 
             {availableOnlineProviders.includes(PaymentProvider.STRIPE) && (

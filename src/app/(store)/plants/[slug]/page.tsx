@@ -65,8 +65,7 @@ export default async function PlantDetailsPage({ params }: Props) {
             <h1 className="mt-5 text-3xl font-bold sm:text-5xl">{product.name}</h1>
             <p className="mt-2 text-xl text-[var(--primary)]">{product.bengaliName}</p>
             <p className="mt-2 text-sm text-[var(--muted)]">
-              <em>{product.scientificName}</em> · SKU PP-{product.id.toUpperCase()} · ★ 4.9 (24
-              reviews)
+              <em>{product.scientificName}</em>{product.sku ? ` · SKU: ${product.sku}` : ""}
             </p>
             <div className="mt-6 text-2xl">
               <ProductPrice regularPrice={product.regularPrice} salePrice={product.salePrice} />

@@ -50,3 +50,9 @@ export async function updateContactMessageStatus(id: string, status: string, adm
     },
   });
 }
+
+export async function deleteContactMessage(id: string) {
+  return prisma.contactMessage.delete({
+    where: { id },
+  });
+}
