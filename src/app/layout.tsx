@@ -35,8 +35,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="bn">
-      <GoogleTagManager gtmId="GTM-5X7PXVHF" />
       <body className="font-bengali-system">
+        <GoogleTagManager gtmId="GTM-5X7PXVHF" />
         <AppProviders>{children}</AppProviders>
       </body>
     </html>
