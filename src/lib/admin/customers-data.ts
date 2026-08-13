@@ -158,7 +158,7 @@ export async function getAdminCustomerById(id: string): Promise<CustomerDetail |
         orderBy: { isDefault: "desc" },
         select: {
           id: true,
-          fullName: true,
+          recipientName: true,
           phone: true,
           addressLine1: true,
           addressLine2: true,
@@ -202,7 +202,17 @@ export async function getAdminCustomerById(id: string): Promise<CustomerDetail |
     totalSpent,
     lastOrderDate,
     addressesCount: user._count.addresses,
-    addresses: user.addresses,
+    addresses: user.addresses.map((a) => ({
+      id: a.id,
+      fullName: a.recipientName,
+      phone: a.phone,
+      addressLine1: a.addressLine1,
+      addressLine2: a.addressLine2,
+      city: a.city,
+      district: a.district,
+      postalCode: a.postalCode,
+      isDefault: a.isDefault,
+    })),
     recentOrders: user.orders.map((o) => ({
       id: o.id,
       orderNumber: o.orderNumber,
