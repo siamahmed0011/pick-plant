@@ -106,6 +106,8 @@ export async function createCategoryAction(
 
   revalidatePath("/admin/categories");
   revalidatePath("/admin/products");
+  revalidatePath("/categories");
+  revalidatePath("/categories/[slug]", "page");
   return { status: "success", message: "Category created successfully." };
 }
 
@@ -161,6 +163,8 @@ export async function updateCategoryAction(
 
   revalidatePath("/admin/categories");
   revalidatePath("/admin/products");
+  revalidatePath("/categories");
+  revalidatePath("/categories/[slug]", "page");
   return { status: "success", message: "Category updated successfully." };
 }
 
@@ -207,5 +211,7 @@ export async function deleteCategoryAction(
 
   revalidatePath("/admin/categories");
   revalidatePath("/admin/products");
+  revalidatePath("/categories");
+  revalidatePath("/categories/[slug]", "page");
   return { status: "success", message: "Category deleted successfully." };
 }

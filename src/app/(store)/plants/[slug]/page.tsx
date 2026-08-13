@@ -81,7 +81,7 @@ export default async function PlantDetailsPage({ params }: Props) {
               <QuantitySelector stock={product.stock} />
             </div>
             <div className="mt-7">
-              <ProductActions />
+              <ProductActions product={product} />
             </div>
             <dl className="mt-8 grid grid-cols-2 gap-3 rounded-2xl border bg-white p-5 text-sm">
               <div>
@@ -153,7 +153,7 @@ export default async function PlantDetailsPage({ params }: Props) {
           </div>
         </section>
       </Container>
-      <ProductMobileActions price={product.salePrice ?? product.regularPrice} name={product.name} />
+      <ProductMobileActions product={product} price={product.salePrice ?? product.regularPrice} name={product.name} />
     </main>
   );
 }

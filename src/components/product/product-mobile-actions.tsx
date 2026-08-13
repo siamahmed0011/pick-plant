@@ -3,8 +3,21 @@ import { useState } from "react";
 import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/formatters";
-export function ProductMobileActions({ price, name }: { price: number; name: string }) {
+import { useCart } from "@/providers/cart-provider";
+import type { Product } from "@/types";
+
+export function ProductMobileActions({
+  product,
+  price,
+  name,
+}: {
+  product?: Product;
+  price: number;
+  name: string;
+}) {
   const [wished, setWished] = useState(false);
+  const { addItem } = useCart();
+
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 flex items-center gap-3 border-t bg-white p-3 lg:hidden">
       <strong className="mr-auto text-[var(--primary)]">{formatCurrency(price)}</strong>
@@ -17,7 +30,12 @@ export function ProductMobileActions({ price, name }: { price: number; name: str
       >
         <Heart fill={wished ? "currentColor" : "none"} />
       </button>
-      <Button>Add to Cart</Button>
+      <Button
+        disabled={Boolean(product && product.stock <= 0)}
+        onClick={() => product && addItem(product)}
+      >
+        {product && product.stock <= 0 ? "Out of Stock" : "Add to Cart"}
+      </Button>
     </div>
   );
 }

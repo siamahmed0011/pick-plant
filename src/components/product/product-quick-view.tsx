@@ -6,6 +6,8 @@ import { ProductImage } from "./product-image";
 import { ProductPrice } from "./product-price";
 import { QuantitySelector } from "./quantity-selector";
 import { Button } from "@/components/ui/button";
+import { useCart } from "@/providers/cart-provider";
+
 export function ProductQuickView({
   product,
   open,
@@ -15,6 +17,8 @@ export function ProductQuickView({
   open: boolean;
   onClose: () => void;
 }) {
+  const { addItem } = useCart();
+
   return (
     <Modal open={open} onClose={onClose} title="Quick View">
       <div className="grid gap-6 sm:grid-cols-2">
@@ -48,7 +52,9 @@ export function ProductQuickView({
             <QuantitySelector stock={product.stock} />
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
-            <Button size="sm">Add to Cart</Button>
+            <Button size="sm" disabled={product.stock <= 0} onClick={() => addItem(product)}>
+              {product.stock <= 0 ? "Out of Stock" : "Add to Cart"}
+            </Button>
             <Link
               onClick={onClose}
               href={`/plants/${product.slug}`}

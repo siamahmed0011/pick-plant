@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Session } from "next-auth";
 import Link from "next/link";
-import { Heart, LogOut, Menu, Package, ShoppingCart, User, UserPlus, UserRound } from "lucide-react";
+import { ChevronDown, Heart, LogOut, Menu, Package, ShoppingCart, User, UserPlus, UserRound } from "lucide-react";
 import { signOutAction } from "@/app/(auth)/actions";
 import { mainNavigation } from "@/config/navigation";
 import { Button } from "@/components/ui/button";
@@ -128,18 +128,47 @@ export function MobileMenu({ session }: { session?: Session | null }) {
           <div className="border-t border-[var(--border)] my-1" />
 
           {/* Main Navigation Links */}
-          {mainNavigation.map((item) => (
-            <Link
-              className="rounded-xl px-4 py-3 font-medium hover:bg-[var(--muted-surface)] hover:text-[var(--primary)]"
-              href={item.href}
-              key={item.href}
-              onClick={() => setOpen(false)}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {mainNavigation.map((item) =>
+            item.children ? (
+              <details key={item.href} className="group rounded-xl border border-[var(--border)] bg-white/50">
+                <summary className="flex cursor-pointer items-center justify-between px-4 py-3 font-medium text-[var(--text)] transition-colors hover:bg-[var(--muted-surface)] hover:text-[var(--primary)]">
+                  <span>{item.label}</span>
+                  <ChevronDown size={16} className="shrink-0 transition-transform duration-200 group-open:rotate-180" />
+                </summary>
+                <div className="space-y-1 p-2 pt-0">
+                  <Link
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className="block rounded-lg px-3 py-2 text-sm font-semibold text-[var(--primary)] hover:bg-[var(--muted-surface)]"
+                  >
+                    All Categories →
+                  </Link>
+                  {item.children.map((child) => (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      onClick={() => setOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-sm font-medium text-[var(--text)] transition-colors hover:bg-[var(--muted-surface)] hover:text-[var(--primary)]"
+                    >
+                      {child.label}
+                    </Link>
+                  ))}
+                </div>
+              </details>
+            ) : (
+              <Link
+                className="rounded-xl px-4 py-3 font-medium hover:bg-[var(--muted-surface)] hover:text-[var(--primary)]"
+                href={item.href}
+                key={item.href}
+                onClick={() => setOpen(false)}
+              >
+                {item.label}
+              </Link>
+            )
+          )}
         </nav>
       </Drawer>
     </>
   );
 }
+

@@ -1,9 +1,15 @@
+"use client";
+
 import type { Product } from "@/types";
 import { ProductImage } from "./product-image";
 import { ProductPrice } from "./product-price";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useCart } from "@/providers/cart-provider";
+
 export function ProductList({ items }: { items: Product[] }) {
+  const { addItem } = useCart();
+
   return (
     <div className="grid gap-4">
       {items.map((product) => (
@@ -29,8 +35,13 @@ export function ProductList({ items }: { items: Product[] }) {
           </div>
           <div className="flex items-center justify-between gap-4 sm:block">
             <ProductPrice regularPrice={product.regularPrice} salePrice={product.salePrice} />
-            <Button size="sm" className="mt-3">
-              Add to Cart
+            <Button
+              size="sm"
+              className="mt-3"
+              disabled={product.stock <= 0}
+              onClick={() => addItem(product)}
+            >
+              {product.stock <= 0 ? "Out of Stock" : "Add to Cart"}
             </Button>
           </div>
         </article>

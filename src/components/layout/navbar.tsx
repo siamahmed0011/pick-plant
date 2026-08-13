@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
@@ -9,6 +10,47 @@ import { cn } from "@/lib/utils";
 
 export function Navbar() {
   const pathname = usePathname();
+  const categoryDetailsRef = useRef<HTMLDetailsElement>(null);
+
+  const closeCategoryMenu = useCallback(() => {
+    if (categoryDetailsRef.current) {
+      categoryDetailsRef.current.open = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    closeCategoryMenu();
+  }, [pathname, closeCategoryMenu]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        categoryDetailsRef.current &&
+        categoryDetailsRef.current.open &&
+        !categoryDetailsRef.current.contains(event.target as Node)
+      ) {
+        closeCategoryMenu();
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && categoryDetailsRef.current?.open) {
+        closeCategoryMenu();
+        const summary = categoryDetailsRef.current.querySelector("summary");
+        if (summary) {
+          summary.focus();
+        }
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeCategoryMenu]);
 
   return (
     <nav
@@ -18,6 +60,7 @@ export function Navbar() {
       {mainNavigation.map((item) =>
         item.children ? (
           <details
+            ref={categoryDetailsRef}
             className="group relative shrink-0 whitespace-nowrap"
             key={item.href}
           >
@@ -37,7 +80,7 @@ export function Navbar() {
             </summary>
 
             <div className="surface absolute left-0 top-full z-40 mt-2 w-80 p-3">
-              <CategoryMenu />
+              <CategoryMenu onNavigate={closeCategoryMenu} />
             </div>
           </details>
         ) : (

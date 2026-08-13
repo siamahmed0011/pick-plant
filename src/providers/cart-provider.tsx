@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useMemo, useSyncExternalStore } from "react";
 import type { Product } from "@/types";
+import { trackAddToCart } from "@/lib/analytics/gtm";
 
 export type CartItem = {
   id: string;
@@ -110,7 +111,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     () => ({
       items,
       hydrated,
-      addItem: (product, quantity = 1, size = "Medium", pot = "Nursery Pot") =>
+      addItem: (product, quantity = 1, size = "Medium", pot = "Nursery Pot") => {
+        if (!product || product.stock <= 0 || quantity <= 0) return;
+        const effectiveQty = Math.min(product.stock, quantity);
+        if (effectiveQty <= 0) return;
+
         updateItems((current) => {
           const id = `${product.id}-${size}-${pot}`;
           const existing = current.find((item) => item.id === id);
@@ -130,13 +135,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               bengaliName: product.bengaliName,
               image: product.image,
               price: product.salePrice ?? product.regularPrice,
-              quantity: Math.min(product.stock, quantity),
+              quantity: effectiveQty,
               stock: product.stock,
               selectedSize: size,
               selectedPot: pot,
             },
           ];
-        }),
+        });
+
+        trackAddToCart({
+          id: product.id,
+          name: product.name,
+          price: product.salePrice ?? product.regularPrice,
+          quantity: effectiveQty,
+          category: product.category?.name,
+        });
+      },
       removeItem: (id) => updateItems((current) => current.filter((item) => item.id !== id)),
       updateQuantity: (id, quantity) =>
         updateItems((current) =>
