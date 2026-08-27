@@ -27,18 +27,21 @@ export type ValidatedCouponResult = {
   message?: string;
 };
 
+type DbClient = PrismaClient.TransactionClient | typeof prisma;
+
 export async function validateAndCalculateCoupon(
   codeRaw: string,
   subtotal: number,
   shippingCost: number,
   cartItems: CartItemForCoupon[],
   userId?: string | null,
-  customerEmail?: string | null
+  customerEmail?: string | null,
+  db: DbClient = prisma
 ): Promise<ValidatedCouponResult> {
   const code = codeRaw.trim().toUpperCase();
   if (!code) throw new CouponValidationError("Please enter a coupon code.");
 
-  const coupon = await prisma.coupon.findUnique({
+  const coupon = await db.coupon.findUnique({
     where: { code },
     include: {
       targetProducts: { select: { productId: true } },
@@ -69,7 +72,7 @@ export async function validateAndCalculateCoupon(
 
   // Check per-customer usage limit
   if (coupon.usageLimitPerCustomer !== null && (userId || customerEmail)) {
-    const customerRedemptions = await prisma.couponRedemption.count({
+    const customerRedemptions = await db.couponRedemption.count({
       where: {
         couponId: coupon.id,
         OR: [

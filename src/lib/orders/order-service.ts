@@ -201,14 +201,16 @@ export async function createOrder(
         });
       }
 
-      // 3. Calculate dynamic shipping cost from shipping zone
+      // 3. Calculate dynamic shipping cost from shipping zone using transaction client
       const shippingCalc = await calculateShippingCost(
         validated.shippingDistrict || "Dhaka",
-        Number(subtotal)
+        Number(subtotal),
+        undefined,
+        tx
       );
       const shippingTotal = new Prisma.Decimal(shippingCalc.shippingCost);
 
-      // 4. Validate & calculate coupon discount if provided
+      // 4. Validate & calculate coupon discount if provided using transaction client
       let appliedCouponId: string | null = null;
       let couponCode: string | null = null;
       let couponDiscountTotal = new Prisma.Decimal(0);
@@ -220,7 +222,8 @@ export async function createOrder(
           shippingCalc.shippingCost,
           cartItemsForCoupon,
           userId,
-          validated.customerEmail
+          validated.customerEmail,
+          tx
         );
 
         appliedCouponId = couponResult.couponId;
@@ -340,29 +343,35 @@ export async function createOrder(
         },
       });
 
-      // 9. Deduct product stock & Create InventoryMovement
+      // 9. Deduct product stock & batch InventoryMovements
+      const inventoryMovementsData: Prisma.InventoryMovementCreateManyInput[] = [];
+
       for (const update of stockUpdates) {
         await tx.product.update({
           where: { id: update.productId },
           data: { stockQuantity: update.newStock },
         });
 
-        await tx.inventoryMovement.create({
-          data: {
-            product: { connect: { id: update.productId } },
-            performedBy: userId ? { connect: { id: userId } } : undefined,
-            type: InventoryMovementType.SALE,
-            quantity: -update.quantityDeducted,
-            previousStock: update.previousStock,
-            newStock: update.newStock,
-            reason: "Order Placement",
-            note: `Order #${order.orderNumber}`,
-            reference: order.orderNumber,
-            productName: update.productName,
-            productSku: update.productSku,
-            performedByEmail: validated.customerEmail,
-            performedByName: validated.customerName,
-          },
+        inventoryMovementsData.push({
+          productId: update.productId,
+          performedById: userId || null,
+          type: InventoryMovementType.SALE,
+          quantity: -update.quantityDeducted,
+          previousStock: update.previousStock,
+          newStock: update.newStock,
+          reason: "Order Placement",
+          note: `Order #${order.orderNumber}`,
+          reference: order.orderNumber,
+          productName: update.productName,
+          productSku: update.productSku,
+          performedByEmail: validated.customerEmail,
+          performedByName: validated.customerName,
+        });
+      }
+
+      if (inventoryMovementsData.length > 0) {
+        await tx.inventoryMovement.createMany({
+          data: inventoryMovementsData,
         });
       }
 
@@ -386,7 +395,11 @@ export async function createOrder(
 
       return { order, isNewOrder: true };
       },
-      { isolationLevel: "Serializable" },
+      {
+        maxWait: 5000,
+        timeout: 15000,
+        isolationLevel: "Serializable",
+      },
     );
   } catch (error) {
     if (
@@ -739,7 +752,11 @@ export async function releaseReservation(
       if (!updatedOrder) throw new OrderNotFoundError("Order not found.");
 
       return { order: updatedOrder, released: true };
-    }, { isolationLevel: "Serializable" });
+    }, {
+      maxWait: 5000,
+      timeout: 15000,
+      isolationLevel: "Serializable",
+    });
   } catch (error) {
     if (
       remainingRetries > 0 &&

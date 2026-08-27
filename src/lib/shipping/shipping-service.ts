@@ -8,16 +8,18 @@ const Decimal = PrismaClient.Decimal;
 export class ShippingError extends Error {}
 export class ShippingZoneNotFoundError extends ShippingError {}
 
+type DbClient = PrismaClient.TransactionClient | typeof prisma;
+
 /**
  * Seeds default Bangladesh shipping zones if database has no active zones.
  */
-export async function ensureDefaultShippingZones() {
-  const count = await prisma.shippingZone.count();
+export async function ensureDefaultShippingZones(db: DbClient = prisma) {
+  const count = await db.shippingZone.count();
   if (count > 0) return;
 
-  await prisma.$transaction(async (tx) => {
+  const seedZones = async (client: DbClient) => {
     // 1. Dhaka City Zone
-    await tx.shippingZone.create({
+    await client.shippingZone.create({
       data: {
         name: "Dhaka City",
         countries: "Bangladesh",
@@ -47,7 +49,7 @@ export async function ensureDefaultShippingZones() {
     });
 
     // 2. Outside Dhaka Zone
-    await tx.shippingZone.create({
+    await client.shippingZone.create({
       data: {
         name: "Outside Dhaka",
         countries: "Bangladesh",
@@ -68,7 +70,13 @@ export async function ensureDefaultShippingZones() {
         },
       },
     });
-  });
+  };
+
+  if ("$transaction" in db && typeof db.$transaction === "function") {
+    await (db as typeof prisma).$transaction(async (tx) => seedZones(tx));
+  } else {
+    await seedZones(db);
+  }
 }
 
 export type CalculatedShippingResult = {
@@ -83,11 +91,12 @@ export type CalculatedShippingResult = {
 export async function calculateShippingCost(
   districtOrCity: string,
   subtotal: number,
-  selectedRateId?: string
+  selectedRateId?: string,
+  db: DbClient = prisma
 ): Promise<CalculatedShippingResult> {
-  await ensureDefaultShippingZones();
+  await ensureDefaultShippingZones(db);
 
-  const activeZones = await prisma.shippingZone.findMany({
+  const activeZones = await db.shippingZone.findMany({
     where: { isActive: true },
     orderBy: { priority: "desc" },
     include: {
