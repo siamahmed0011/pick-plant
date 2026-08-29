@@ -24,8 +24,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const products = await getStorefrontProducts();
   const product = products.find((item) => item.slug === slug);
   return product
-    ? { title: `${product.name} | Pick Plant`, description: product.shortDescription }
-    : { title: "Plant Not Found | Pick Plant" };
+    ? {
+        title: product.name,
+        description: product.shortDescription,
+        alternates: {
+          canonical: `/plants/${slug}`,
+        },
+      }
+    : {
+        title: "Plant Not Found",
+        robots: {
+          index: false,
+          follow: false,
+        },
+      };
 }
 export default async function PlantDetailsPage({ params }: Props) {
   const { slug } = await params;

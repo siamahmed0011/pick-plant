@@ -26,12 +26,16 @@ export async function generateMetadata({
 
   if (!category) {
     return {
-      title: "Category Not Found | Pick Plant",
+      title: "Category Not Found",
+      robots: {
+        index: false,
+        follow: false,
+      },
     };
   }
 
   return {
-    title: `${category.name} | Pick Plant`,
+    title: category.name,
     description:
       category.description ||
       `Explore our curated selection of ${category.name} at Pick Plant. High quality plants delivered with care across Bangladesh.`,

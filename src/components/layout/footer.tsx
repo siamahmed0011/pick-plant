@@ -27,7 +27,7 @@ const groups = [
     items: [
       { label: "About", href: "/about" },
       { label: "Contact", href: "/contact" },
-      { label: "Privacy Policy", href: "/about" },
+      { label: "Privacy Policy", href: "/privacy" },
       { label: "Terms & Conditions", href: "/about" },
     ],
   },

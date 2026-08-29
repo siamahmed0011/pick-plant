@@ -1,7 +1,17 @@
+import type { Metadata } from "next";
 import { CategoryGrid } from "@/components/category/category-grid";
 import { Container } from "@/components/shared/container";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { getStorefrontCategories } from "@/lib/storefront/categories";
+
+export const metadata: Metadata = {
+  title: "Plant Categories",
+  description: "Browse all plant categories at Pick Plant — indoor plants, outdoor plants, succulents, fruit plants, pots & planters, and more.",
+  alternates: {
+    canonical: "/categories",
+  },
+};
+
 
 export default async function CategoriesPage() {
   const categories = await getStorefrontCategories();

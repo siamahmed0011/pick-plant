@@ -5,7 +5,7 @@ import "@/styles/animations.css";
 import { AppProviders } from "@/providers/app-providers";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://pick-plant.vercel.app"),
   title: {
     default: "Pick Plant | আপনার বিশ্বস্ত অনলাইন প্ল্যান্ট শপ",
     template: "%s | Pick Plant",

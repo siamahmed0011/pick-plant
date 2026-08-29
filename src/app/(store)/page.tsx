@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { HeroSection } from "@/components/home/hero-section";
 import { FeaturedCategories } from "@/components/home/featured-categories";
@@ -13,6 +14,13 @@ import { CareGuidesSection } from "@/components/home/care-guides-section";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
 import { NewsletterSection } from "@/components/home/newsletter-section";
 import { getStorefrontProducts } from "@/lib/storefront/products";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+  },
+};
+
 
 export default async function HomePage() {
   const [session, products] = await Promise.all([
