@@ -123,8 +123,19 @@ export function ProductImageUploader({
           const progress = Math.round((event.loaded / event.total) * 100);
           setImages((current) => current.map((image) => image.originalName === originalFile.name && image.secureUrl === "" ? { ...image, progress } : image));
         };
-        xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve(JSON.parse(xhr.responseText)) : reject(new Error("Cloudinary upload failed."));
-        xhr.onerror = () => reject(new Error("Cloudinary upload failed."));
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(JSON.parse(xhr.responseText));
+          } else {
+            try {
+              const errObj = JSON.parse(xhr.responseText);
+              reject(new Error(errObj?.error?.message ? `Cloudinary error: ${errObj.error.message}` : "Cloudinary upload failed."));
+            } catch {
+              reject(new Error(`Cloudinary upload failed (${xhr.status}).`));
+            }
+          }
+        };
+        xhr.onerror = () => reject(new Error("Cloudinary upload network error."));
         xhr.send(formData);
       });
       const uploaded: UploadItem = {
@@ -203,7 +214,7 @@ export function ProductImageUploader({
               data-index={index}
             >
               <div className="relative aspect-square overflow-hidden rounded-xl bg-[var(--muted-surface)]">
-                {image.secureUrl ? <Image src={image.secureUrl} alt={image.altText || image.originalName || "Product image"} fill className="object-cover" /> : <LoaderCircle className="absolute inset-0 m-auto animate-spin text-[var(--primary)]" size={22} aria-label="Uploading" />}
+                {image.secureUrl ? <Image src={image.secureUrl} alt={image.altText || image.originalName || "Product image"} fill sizes="96px" className="object-cover" /> : <LoaderCircle className="absolute inset-0 m-auto animate-spin text-[var(--primary)]" size={22} aria-label="Uploading" />}
                 {image.status === "uploading" && <span className="absolute inset-x-0 bottom-0 h-1 bg-white/40"><span className="block h-full bg-[var(--primary)]" style={{ width: `${image.progress ?? 0}%` }} /></span>}
                 {index === 0 && <span className="absolute left-1 top-1 rounded-full bg-[var(--primary)] px-2 py-1 text-[10px] font-bold text-white">Primary</span>}
               </div>

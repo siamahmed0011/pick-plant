@@ -28,26 +28,82 @@ function getRedisClient(): Redis | null {
   return null;
 }
 
-function handleMissingRedis(
-  headerSource: string | null = null,
-  reason: RateLimitReason = "missing_redis_config"
+// In-memory sliding window fallback for instant sub-millisecond execution & offline/unconfigured Redis
+type MemoryRecord = { timestamps: number[] };
+const memoryStorage = new Map<string, MemoryRecord>();
+
+function cleanMemoryStorage() {
+  const now = Date.now();
+  for (const [key, record] of memoryStorage.entries()) {
+    record.timestamps = record.timestamps.filter((ts) => now - ts < 3600000);
+    if (record.timestamps.length === 0) {
+      memoryStorage.delete(key);
+    }
+  }
+}
+
+// Clean every 10 minutes
+if (typeof setInterval !== "undefined") {
+  setInterval(cleanMemoryStorage, 10 * 60 * 1000).unref?.();
+}
+
+function parseWindowMs(windowStr: string): number {
+  const match = windowStr.match(/^(\d+)\s*([smhd])$/);
+  if (!match) return 60000;
+  const num = parseInt(match[1], 10);
+  const unit = match[2];
+  if (unit === "s") return num * 1000;
+  if (unit === "m") return num * 60 * 1000;
+  if (unit === "h") return num * 3600 * 1000;
+  if (unit === "d") return num * 86400 * 1000;
+  return 60000;
+}
+
+function checkMemoryRateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+  headerSource: string | null
 ): RateLimitResult {
-  const isProd = process.env.NODE_ENV === "production";
-  if (isProd) {
-    console.error("Rate limiting failed closed: UPSTASH_REDIS_REST_URL or TOKEN missing/errored in production.");
-    return formatRateLimitResponse(
-      "unavailable",
-      0,
-      0,
-      0,
-      "Security verification is temporarily unavailable. Please try again.",
-      headerSource,
-      reason
-    );
+  const now = Date.now();
+  let record = memoryStorage.get(key);
+  if (!record) {
+    record = { timestamps: [] };
+    memoryStorage.set(key, record);
   }
 
-  console.warn("[DEV ONLY] Upstash Redis credentials missing or errored. Allowing request in development mode.");
-  return formatRateLimitResponse("allowed", 100, 100, 0, undefined, headerSource);
+  // Remove timestamps outside window
+  record.timestamps = record.timestamps.filter((ts) => now - ts < windowMs);
+
+  if (record.timestamps.length < limit) {
+    record.timestamps.push(now);
+    return formatRateLimitResponse("allowed", limit, limit - record.timestamps.length, 0, undefined, headerSource);
+  }
+
+  const oldest = record.timestamps[0] ?? now;
+  const resetMs = Math.max(0, windowMs - (now - oldest));
+  return formatRateLimitResponse(
+    "limited",
+    limit,
+    0,
+    resetMs,
+    "Too many attempts. Please try again later.",
+    headerSource,
+    "rate_exceeded"
+  );
+}
+
+function handleMissingRedis(
+  headerSource: string | null = null,
+  fallbackKey?: string,
+  requests: number = 10,
+  windowMs: number = 60000,
+  reason: RateLimitReason = "missing_redis_config"
+): RateLimitResult {
+  if (fallbackKey) {
+    return checkMemoryRateLimit(fallbackKey, requests, windowMs, headerSource);
+  }
+  return formatRateLimitResponse("allowed", requests, requests, 0, undefined, headerSource);
 }
 
 export type IpInput =
@@ -78,33 +134,18 @@ export async function checkRateLimit(
   ipInput: IpInput
 ): Promise<RateLimitResult> {
   const { ip, headerSource } = resolveIpDetails(ipInput);
-  let resolvedIp = ip;
-
-  if (!resolvedIp) {
-    if (process.env.NODE_ENV === "production") {
-      console.error(`Rate limiting unavailable for ${limiterName}: Missing or untrusted IP in production.`);
-      return formatRateLimitResponse(
-        "unavailable",
-        0,
-        0,
-        0,
-        "Security verification is temporarily unavailable. Please try again.",
-        headerSource,
-        "missing_ip"
-      );
-    }
-    resolvedIp = "127.0.0.1";
-  }
+  const resolvedIp = ip || "127.0.0.1";
+  const windowMs = parseWindowMs(windowStr);
+  const fullKey = `${limiterName}:${resolvedIp}:${keySuffix}`;
 
   const redis = getRedisClient();
   if (!redis) {
-    return handleMissingRedis(headerSource, "missing_redis_config");
+    return handleMissingRedis(headerSource, fullKey, requests, windowMs, "missing_redis_config");
   }
 
   const appNs = process.env.RATE_LIMIT_NAMESPACE?.trim() || "pickplant";
   const envNs = process.env.VERCEL_ENV?.trim() || process.env.NODE_ENV || "development";
   const prefix = `${appNs}:${envNs}:${limiterName}`;
-  const fullKey = `${resolvedIp}:${keySuffix}`;
 
   try {
     const limiter = new Ratelimit({
@@ -113,7 +154,16 @@ export async function checkRateLimit(
       prefix,
     });
 
-    const res = await limiter.limit(fullKey);
+    // 1-second timeout race to prevent slow network / Upstash latency from stalling checkout
+    const limitPromise = limiter.limit(`${resolvedIp}:${keySuffix}`);
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000));
+
+    const res = await Promise.race([limitPromise, timeoutPromise]);
+    if (!res) {
+      console.warn(`[RateLimit] Redis timed out for ${limiterName}, falling back to memory limiter.`);
+      return handleMissingRedis(headerSource, fullKey, requests, windowMs, "redis_error");
+    }
+
     const resetMs = Math.max(0, res.reset - Date.now());
 
     if (res.success) {
@@ -138,7 +188,7 @@ export async function checkRateLimit(
     );
   } catch (error) {
     console.error(`Rate limiting check error for ${limiterName}:`, error instanceof Error ? error.message : "Unknown error");
-    return handleMissingRedis(headerSource, "redis_error");
+    return handleMissingRedis(headerSource, fullKey, requests, windowMs, "redis_error");
   }
 }
 

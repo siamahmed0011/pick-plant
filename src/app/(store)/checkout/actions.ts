@@ -60,7 +60,13 @@ import { findExistingOrderBySourceCartId } from "@/lib/orders/order-service";
 export async function placeOrderAction(input: CheckoutInput): Promise<CheckoutActionResult> {
   try {
     const session = await getCheckoutSession();
-    const checkoutIdempotencyKey = await requireCheckoutIdempotency();
+    let checkoutIdempotencyKey: string;
+    try {
+      checkoutIdempotencyKey = await requireCheckoutIdempotency();
+    } catch {
+      // Auto-recover if pre-flight preparation was skipped or expired
+      checkoutIdempotencyKey = await prepareCheckoutIdempotency(session?.user?.id);
+    }
 
     const existingOrder = await findExistingOrderBySourceCartId(checkoutIdempotencyKey);
     if (existingOrder) {
@@ -77,13 +83,6 @@ export async function placeOrderAction(input: CheckoutInput): Promise<CheckoutAc
     const rateLimitKey = session?.user?.id || checkoutIdempotencyKey || "guest";
     const rateLimit = await checkCheckoutRateLimit(reqHeaders, rateLimitKey);
 
-    if (rateLimit.status === "unavailable") {
-      return {
-        success: false,
-        error: "Security verification is temporarily unavailable. Please try again.",
-      };
-    }
-
     if (rateLimit.status === "limited") {
       return {
         success: false,
@@ -98,11 +97,10 @@ export async function placeOrderAction(input: CheckoutInput): Promise<CheckoutAc
     );
 
     if (isNewOrder) {
-      try {
-        await sendOrderConfirmationEmail(order);
-      } catch (err) {
-        console.error("Failed to send order confirmation email:", err);
-      }
+      // Fire-and-forget email delivery in the background so user checkout is instantaneous
+      sendOrderConfirmationEmail(order).catch((err) => {
+        console.error("Failed to send order confirmation email in background:", err);
+      });
     }
 
     return {

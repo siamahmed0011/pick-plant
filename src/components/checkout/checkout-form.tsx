@@ -1,13 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/providers/cart-provider";
 import {
   completeCheckoutSubmissionAction,
   placeOrderAction,
-  prepareCheckoutSubmissionAction,
 } from "@/app/(store)/checkout/actions";
 import { checkoutFormSchema, type CheckoutInput } from "@/lib/orders/order-validation";
 import { formatCurrency } from "@/lib/formatters";
@@ -57,6 +56,10 @@ export function CheckoutForm({
   const [submissionStage, setSubmissionStage] = useState<
     "placing" | "initiating"
   >("placing");
+
+  useEffect(() => {
+    router.prefetch("/checkout/success");
+  }, [router]);
   const [pendingPayment, setPendingPayment] =
     useState<PendingOnlinePayment | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(
@@ -225,12 +228,6 @@ export function CheckoutForm({
     let navigationStarted = false;
 
     try {
-      const prepared = await prepareCheckoutSubmissionAction();
-      if (!prepared.success) {
-        setErrorMessage(prepared.error);
-        return;
-      }
-
       const result = await placeOrderAction(parsed.data);
       if (result.success) {
         const onlineProvider = asOnlinePaymentProvider(
