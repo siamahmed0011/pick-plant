@@ -203,6 +203,8 @@ export function CheckoutForm({
 
     const payload: CheckoutInput = {
       ...formData,
+      manualPaymentChannel: formData.paymentMethod === "MANUAL" ? formData.manualPaymentChannel : undefined,
+      manualTransactionRef: formData.paymentMethod === "MANUAL" ? formData.manualTransactionRef : undefined,
       couponCode: appliedCoupon ? appliedCoupon.code : null,
       items: items.map((item) => ({
         productId: item.productId,

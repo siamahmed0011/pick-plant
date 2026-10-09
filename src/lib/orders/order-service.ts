@@ -251,7 +251,14 @@ export async function createOrder(
       // Determine payment provider enum
       let provider: PaymentProvider = PaymentProvider.CASH_ON_DELIVERY;
       const pmUpper = (validated.paymentMethod || "").toUpperCase();
-      if (pmUpper.includes("MANUAL") || pmUpper.includes("BKASH") || pmUpper.includes("NAGAD") || pmUpper.includes("BANK")) {
+      if (
+        pmUpper.includes("MANUAL") ||
+        pmUpper.includes("BKASH") ||
+        pmUpper.includes("NAGAD") ||
+        pmUpper.includes("ROCKET") ||
+        pmUpper.includes("UPAY") ||
+        pmUpper.includes("BANK")
+      ) {
         provider = PaymentProvider.MANUAL;
       } else if (pmUpper.includes("SSLCOMMERZ")) {
         provider = PaymentProvider.SSLCOMMERZ;
@@ -259,6 +266,18 @@ export async function createOrder(
         provider = PaymentProvider.STRIPE;
       }
       const expiresAt = onlineOrderExpiresAt(provider);
+
+      // Determine clean human-readable payment method display
+      let displayPaymentMethod = "Cash on Delivery";
+      if (provider === PaymentProvider.MANUAL) {
+        displayPaymentMethod = validated.manualPaymentChannel || "bKash (Send Money)";
+      } else if (provider === PaymentProvider.SSLCOMMERZ) {
+        displayPaymentMethod = "SSLCommerz Online Payment";
+      } else if (provider === PaymentProvider.STRIPE) {
+        displayPaymentMethod = "Stripe Card Payment";
+      } else {
+        displayPaymentMethod = "Cash on Delivery";
+      }
 
       // 6. Create Order
       const order = await tx.order.create({
@@ -269,8 +288,8 @@ export async function createOrder(
           status: OrderStatus.PENDING,
           paymentStatus: PaymentStatus.PENDING,
           paymentProvider: provider,
-          paymentMethod: validated.manualPaymentChannel || validated.paymentMethod,
-          paymentReference: validated.manualTransactionRef || null,
+          paymentMethod: displayPaymentMethod,
+          paymentReference: provider === PaymentProvider.MANUAL ? (validated.manualTransactionRef || null) : null,
           customerName: validated.customerName,
           customerEmail: validated.customerEmail,
           customerPhone: validated.customerPhone,
@@ -327,7 +346,7 @@ export async function createOrder(
         data: {
           orderId: order.id,
           provider,
-          method: validated.manualPaymentChannel || validated.paymentMethod,
+          method: displayPaymentMethod,
           status: initialTxStatus,
           amount: grandTotal,
           currency: "BDT",
