@@ -41,6 +41,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Package,
+  Printer,
 } from "lucide-react";
 
 type OrderItem = {
@@ -353,6 +354,14 @@ export function AdminOrderDetailView({ order }: { order: AdminOrderDetails }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/orders/${encodeURIComponent(order.orderNumber)}/invoice`}
+              target="_blank"
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-emerald-800 transition"
+            >
+              <Printer size={14} /> Print Cash Memo / রসিদ
+            </Link>
+
             {/* Fulfillment status */}
             <span
               aria-label={`Order status: ${order.status}`}

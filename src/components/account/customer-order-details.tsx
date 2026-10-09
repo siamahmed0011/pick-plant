@@ -10,7 +10,7 @@ import { OrderStatusBadge, PaymentStatusBadge } from "@/components/account/statu
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { OrderStatus, PaymentStatus } from "@/generated/prisma/enums";
-import { ArrowLeft, Clock, CreditCard, Loader2, ShoppingBag, Truck, XCircle } from "lucide-react";
+import { ArrowLeft, Clock, CreditCard, FileText, Loader2, ShoppingBag, Truck, XCircle } from "lucide-react";
 import { PaymentRetryButton } from "@/components/payments/payment-retry-button";
 import type { OnlinePaymentProvider } from "@/lib/orders/payment-initiation-eligibility";
 
@@ -117,6 +117,12 @@ export function CustomerOrderDetailsView({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/orders/${encodeURIComponent(order.orderNumber)}/invoice`}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1.5 rounded-[14px] hover:bg-emerald-100 transition"
+            >
+              <FileText size={14} /> Cash Memo / রসিদ
+            </Link>
             <OrderStatusBadge status={order.status} />
             <PaymentStatusBadge status={order.paymentStatus} />
 

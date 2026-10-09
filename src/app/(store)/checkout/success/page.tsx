@@ -8,6 +8,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
+  FileText,
   ShoppingBag,
   Truck,
   CreditCard,
@@ -205,10 +206,24 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
             <p className="text-xs text-[var(--muted)] mt-2">
               Placed On: {formatDate(order.createdAt)}
             </p>
+            <div className="mt-4 pt-3 border-t">
+              <Link
+                href={`/orders/${encodeURIComponent(order.orderNumber)}/invoice`}
+                className="inline-flex items-center gap-2 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition"
+              >
+                <FileText size={14} /> Download Cash Memo / রসিদ
+              </Link>
+            </div>
           </Card>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+          <Link
+            href={`/orders/${encodeURIComponent(order.orderNumber)}/invoice`}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-800 w-full sm:w-auto"
+          >
+            <FileText size={17} /> Download Cash Memo / রসিদ
+          </Link>
           <Link
             href="/account/orders"
             className="inline-flex h-11 items-center justify-center rounded-xl border border-[var(--primary)] px-5 text-sm font-semibold text-[var(--primary)] transition hover:-translate-y-0.5 hover:bg-[var(--muted-surface)] w-full sm:w-auto"
@@ -217,7 +232,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
           </Link>
           <Link
             href="/plants"
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-[var(--primary)] px-5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[var(--primary-hover)] w-full sm:w-auto"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 w-full sm:w-auto"
           >
             Continue Shopping
           </Link>
