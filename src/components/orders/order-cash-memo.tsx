@@ -84,7 +84,7 @@ export function OrderCashMemo({
   return (
     <div className="min-h-screen bg-slate-50/70 py-6 px-4 sm:px-6 print:bg-white print:p-0">
       {/* Top Action Bar (Hidden during print) */}
-      <div className="max-w-3xl mx-auto mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="max-w-3xl mx-auto mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link
           href={backUrl}
           className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-emerald-700 transition"
@@ -94,28 +94,34 @@ export function OrderCashMemo({
         <div className="flex items-center gap-2">
           <Button
             onClick={handlePrint}
-            variant="outline"
-            className="flex items-center gap-2 bg-white text-slate-700 border-slate-300 shadow-sm hover:bg-slate-50"
+            className="flex items-center gap-2 bg-emerald-700 text-white hover:bg-emerald-800 shadow-sm"
           >
-            <Printer size={16} /> Print Memo
-          </Button>
-          <Button
-            onClick={handleDownloadPdf}
-            disabled={isDownloading}
-            className="flex items-center gap-2 bg-emerald-700 text-white hover:bg-emerald-800 shadow-sm disabled:opacity-75"
-          >
-            {isDownloading ? (
-              <>
-                <Loader2 size={16} className="animate-spin" /> Generating PDF...
-              </>
-            ) : (
-              <>
-                <Download size={16} /> Download PDF
-              </>
-            )}
+            <Download size={16} /> Download PDF / Print Memo
           </Button>
         </div>
       </div>
+
+      {/* Guide notice for Save as PDF */}
+      <div className="max-w-3xl mx-auto mb-6 bg-emerald-50/90 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-950 flex items-center gap-2.5 shadow-sm print:hidden">
+        <span className="text-base">💡</span>
+        <span>
+          <strong>PDF ফাইল ডাউনলোড করতে:</strong> উপরে বাটনে ক্লিক করে প্রিন্ট অপশনের <strong>&ldquo;Destination&rdquo;</strong> ড্রপডাউন থেকে আপনার প্রিন্টারের বদলে <strong>&ldquo;Save as PDF&rdquo;</strong> সিলেক্ট করে <strong>Save</strong> চাপুন।
+        </span>
+      </div>
+
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+          body {
+            background: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+        }
+      `}</style>
 
       {/* Cash Memo Sheet (A4 / Standard Invoice format) */}
       <div
