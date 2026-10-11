@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Printer, ShieldCheck, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Printer, ShieldCheck, ShoppingBag } from "lucide-react";
 
 export type CashMemoOrder = {
   id: string;
@@ -48,9 +48,35 @@ export function OrderCashMemo({
   backUrl?: string;
 }) {
   const memoRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!memoRef.current || isDownloading) return;
+    try {
+      setIsDownloading(true);
+      // Dynamic import to prevent SSR evaluation
+      const html2pdfModule = await import("html2pdf.js" as any);
+      const html2pdf = html2pdfModule.default || html2pdfModule;
+
+      const opt = {
+        margin: [8, 8, 8, 8],
+        filename: `Cash-Memo-${order.orderNumber}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      };
+
+      await html2pdf().set(opt).from(memoRef.current).save();
+    } catch (err) {
+      console.error("Failed to generate PDF, falling back to print dialog:", err);
+      window.print();
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const isPaid = order.paymentStatus === "PAID" || order.paymentStatus === "VERIFIED";
@@ -74,10 +100,19 @@ export function OrderCashMemo({
             <Printer size={16} /> Print Memo
           </Button>
           <Button
-            onClick={handlePrint}
-            className="flex items-center gap-2 bg-emerald-700 text-white hover:bg-emerald-800 shadow-sm"
+            onClick={handleDownloadPdf}
+            disabled={isDownloading}
+            className="flex items-center gap-2 bg-emerald-700 text-white hover:bg-emerald-800 shadow-sm disabled:opacity-75"
           >
-            <Download size={16} /> Download PDF
+            {isDownloading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" /> Generating PDF...
+              </>
+            ) : (
+              <>
+                <Download size={16} /> Download PDF
+              </>
+            )}
           </Button>
         </div>
       </div>
